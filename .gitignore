@@ -1,0 +1,22 @@
+# secrets
+.env
+
+# python
+.venv/
+__pycache__/
+*.pyc
+
+# tool/agent config, not part of the project build
+.claude/
+.agents/
+skills-lock.json
+
+# reference-only docs — not required to build/run the project
+LINKS.md
+claudeResult.md
+chatGPTResult.md
+notebookLLMResult.md
+notebookLLMResultPipeline.md
+
+# generated at runtime, not build-relevant
+logs/

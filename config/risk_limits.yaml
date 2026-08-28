@@ -1,0 +1,22 @@
+# Hard-coded risk limits — read by risk_gate.py, never overridden by the LLM.
+# See AGENTS.md §6 "Risk gates" for rationale.
+
+max_loss_per_trade_pct: 0.02       # ≤2% of account equity per trade
+max_total_open_risk_pct: 0.10      # ≤10% of account equity across all open positions
+daily_drawdown_halt_pct: 0.05      # stop trading for the day past this loss
+max_underlyings_concurrent: 3      # diversify across 2-3 names, not all-in
+
+allowed_strategies:
+  - bull_call_spread
+  - bear_put_spread
+  - iron_condor
+
+kelly_fraction: 0.25                # Quarter-Kelly — conservative sizing multiplier
+kelly_cap_pct: 0.02                 # Kelly-sized risk still capped at max_loss_per_trade_pct
+
+underlyings:
+  - SPY
+  - QQQ
+
+market_regime_gate:
+  vix_high_tercile_halt: true       # per RegimeFolio-style gate: no new premium-selling trades in high-vol tercile
