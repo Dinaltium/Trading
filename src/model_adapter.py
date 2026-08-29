@@ -70,7 +70,12 @@ def call_openai_compatible(
 
     if resp.choices is None:
         err = getattr(resp, "error", None)
-        return ModelCallResult(provider, ok=False, error=str(err) if err else "empty response, no choices")
+        error_message = "empty response, no choices"
+        if isinstance(err, dict):
+            error_message = err.get("message") or str(err)
+        elif err:
+            error_message = str(err)
+        return ModelCallResult(provider, ok=False, error=error_message)
 
     content = resp.choices[0].message.content
     if not content:

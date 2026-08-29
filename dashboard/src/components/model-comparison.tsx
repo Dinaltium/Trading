@@ -8,6 +8,15 @@ const SHADOW_LABELS: Record<string, string> = {
   claude_code_cli: "Claude Code CLI",
 };
 
+function SignalStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex flex-col gap-0.5">
+      <span className="font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground">{label}</span>
+      <span className="font-mono text-[13px] tabular-nums break-words">{value}</span>
+    </div>
+  );
+}
+
 function ModelBlock({
   label,
   isLive,
@@ -22,15 +31,13 @@ function ModelBlock({
   error?: string | null;
 }) {
   return (
-    <div className="py-2.5">
-      <div className="flex items-center justify-between gap-3">
+    <div className="py-3 first:pt-0 last:pb-0">
+      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5">
         <div className="flex items-center gap-2">
-          <span className="font-mono text-xs uppercase tracking-[0.15em] text-muted-foreground">
-            {label}
-          </span>
+          <span className="text-sm font-medium">{label}</span>
           {isLive && (
-            <span className="rounded-full bg-foreground px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-wider text-background">
-              live — can execute
+            <span className="rounded-full bg-foreground px-1.5 py-0.5 font-mono text-[9px] font-semibold uppercase tracking-wider text-background">
+              live · can execute
             </span>
           )}
         </div>
@@ -38,21 +45,27 @@ function ModelBlock({
           <div className="flex items-center gap-2">
             <StrategyBadge strategy={decision.selected_strategy} />
             <span className="font-mono text-xs tabular-nums text-muted-foreground">
-              {(decision.confidence_score * 100).toFixed(0)}% confidence
+              {(decision.confidence_score * 100).toFixed(0)}%
             </span>
           </div>
         ) : (
-          <span className="font-mono text-xs text-destructive">{error ? "call failed" : "no data"}</span>
+          <span
+            className="rounded-full px-2 py-0.5 font-mono text-[11px]"
+            style={{
+              color: "light-dark(#a04141, #e66767)",
+              background: "light-dark(color-mix(in srgb, #d03b3b 8%, transparent), color-mix(in srgb, #e66767 14%, transparent))",
+            }}
+          >
+            {error ? "call failed" : "no data"}
+          </span>
         )}
       </div>
-      {/* Whitebox: full reasoning text, every model, always visible — never truncated. */}
+      {/* Whitebox: full reasoning, every model, always visible — never truncated, never a tooltip. */}
       {ok && decision?.reasoning && (
-        <p className="mt-1.5 font-mono text-[11px] leading-relaxed text-muted-foreground">
-          {decision.reasoning}
-        </p>
+        <p className="mt-1.5 text-[13px] leading-relaxed text-muted-foreground">{decision.reasoning}</p>
       )}
       {!ok && error && (
-        <p className="mt-1.5 font-mono text-[11px] leading-relaxed text-destructive break-words">{error}</p>
+        <p className="mt-1.5 text-[13px] leading-relaxed text-muted-foreground break-words">{error}</p>
       )}
     </div>
   );
@@ -63,50 +76,50 @@ export function ModelComparison({ record }: { record: CycleRecord }) {
   const s = record.signals;
 
   return (
-    <div className="rounded-xl border p-4">
+    <div className="rounded-xl border bg-card p-4 transition-colors hover:border-foreground/20">
       {/* Whitebox: the exact signal values every model was given, in full. */}
       {s && (
-        <div className="mb-3 grid grid-cols-2 gap-x-3 gap-y-1 border-b pb-3 font-mono text-[11px] text-muted-foreground sm:grid-cols-3">
-          <span>price ${s.current_price?.toFixed(2)}</span>
-          <span>P(Up) {s.classifier_p_up?.toFixed(3)}</span>
-          <span>IV rank {s.iv_rank != null ? s.iv_rank.toFixed(1) : "—"}</span>
-          <span>IV pct {s.iv_percentile != null ? s.iv_percentile.toFixed(1) : "—"}</span>
-          <span>VRP {s.vrp?.toFixed(4)}</span>
-          <span>regime {s.market_regime}</span>
+        <div className="mb-3.5 grid grid-cols-3 gap-x-3 gap-y-2.5 border-b pb-3.5">
+          <SignalStat label="Price" value={`$${s.current_price?.toFixed(2)}`} />
+          <SignalStat label="P(Up)" value={s.classifier_p_up?.toFixed(3) ?? "—"} />
+          <SignalStat label="IV rank" value={s.iv_rank != null ? s.iv_rank.toFixed(1) : "—"} />
+          <SignalStat label="IV pct" value={s.iv_percentile != null ? s.iv_percentile.toFixed(1) : "—"} />
+          <SignalStat label="VRP" value={s.vrp?.toFixed(4) ?? "—"} />
+          <SignalStat label="Regime" value={s.market_regime ?? "—"} />
         </div>
       )}
 
-      <ModelBlock label="Groq" isLive decision={record.live_decision} ok={!!record.live_decision} />
-      <div className="border-t" />
-      {(["claude_code_cli", "featherless", "mistral"] as const).map((key) => {
-        const sh = shadows[key];
-        return (
-          <div key={key} className="border-t first:border-t-0">
+      <div className="divide-y">
+        <ModelBlock label="Groq" isLive decision={record.live_decision} ok={!!record.live_decision} />
+        {(["claude_code_cli", "featherless", "mistral"] as const).map((key) => {
+          const sh = shadows[key];
+          return (
             <ModelBlock
+              key={key}
               label={SHADOW_LABELS[key]}
               isLive={false}
               decision={sh?.decision}
               ok={!!sh?.ok}
               error={sh?.error}
             />
-          </div>
-        );
-      })}
+          );
+        })}
+      </div>
 
       {record.risk_gate_verdict && (
-        <div className="mt-1 flex items-center justify-between border-t pt-2">
-          <span className="font-mono text-[11px] uppercase tracking-[0.1em] text-muted-foreground">
-            Risk gate
-          </span>
-          <div className="flex items-center gap-2">
+        <div className="mt-1 border-t pt-3">
+          <div className="flex items-center justify-between">
+            <span className="font-mono text-[11px] uppercase tracking-[0.1em] text-muted-foreground">
+              Risk gate
+            </span>
             <VerdictBadge approved={record.risk_gate_verdict.approved} />
           </div>
+          {record.risk_gate_verdict.reason && (
+            <p className="mt-1 text-[13px] leading-relaxed text-muted-foreground">
+              {record.risk_gate_verdict.reason}
+            </p>
+          )}
         </div>
-      )}
-      {record.risk_gate_verdict?.reason && (
-        <p className="font-mono text-[11px] leading-relaxed text-muted-foreground">
-          {record.risk_gate_verdict.reason}
-        </p>
       )}
     </div>
   );

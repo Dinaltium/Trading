@@ -2,7 +2,7 @@ import { getAuditRecords } from "@/lib/audit";
 import { EquityChart } from "@/components/equity-chart";
 import { CycleTable } from "@/components/cycle-table";
 import { ModelComparison } from "@/components/model-comparison";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { StatTile } from "@/components/stat-tile";
 import { Separator } from "@/components/ui/separator";
 
 // Read-only dashboard, no forms/buttons that touch the account. Data source is
@@ -24,15 +24,15 @@ export default async function DashboardPage() {
   const liveCycles = records.length;
 
   return (
-    <div className="mx-auto max-w-7xl space-y-6 p-6">
-      <header className="space-y-1">
-        <div className="font-mono text-[10px] uppercase tracking-[0.3em] text-muted-foreground">
+    <div className="mx-auto max-w-7xl space-y-8 p-6 sm:p-8">
+      <header className="space-y-2 border-b pb-6">
+        <div className="font-mono text-[11px] uppercase tracking-[0.25em] text-muted-foreground">
           Alpaca AI Trading Agents · Options Alpha
         </div>
-        <h1 className="font-mono text-2xl font-semibold tracking-tight">
-          Agent Dashboard <span className="text-muted-foreground">(read-only)</span>
+        <h1 className="text-[1.7rem] font-semibold tracking-tight">
+          Agent Dashboard <span className="font-normal text-muted-foreground">— read-only</span>
         </h1>
-        <p className="max-w-2xl text-sm text-muted-foreground">
+        <p className="max-w-2xl text-[0.95rem] leading-relaxed text-muted-foreground">
           Groq is the only model that reaches order execution — every other model
           below runs the same decision each cycle as a logged shadow comparison and
           never touches the account. All risk sizing is deterministic Python, never
@@ -43,52 +43,22 @@ export default async function DashboardPage() {
       <EquityChart records={records} />
 
       <div className="grid gap-4 sm:grid-cols-3">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-              Cycles logged
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="font-mono text-2xl tabular-nums">{liveCycles}</CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-              Risk gate approved
-            </CardTitle>
-          </CardHeader>
-          <CardContent
-            className="font-mono text-2xl tabular-nums"
-            style={{ color: "light-dark(#0ca30c, #0ca30c)" }}
-          >
-            {approvedCount}
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-              Risk gate rejected
-            </CardTitle>
-          </CardHeader>
-          <CardContent
-            className="font-mono text-2xl tabular-nums"
-            style={{ color: "light-dark(#d03b3b, #e66767)" }}
-          >
-            {rejectedCount}
-          </CardContent>
-        </Card>
+        <StatTile label="Cycles logged" value={liveCycles} />
+        <StatTile label="Risk gate approved" value={approvedCount} tone="good" />
+        <StatTile label="Risk gate rejected" value={rejectedCount} tone="critical" />
       </div>
 
-      <section className="space-y-3">
-        <h2 className="font-mono text-sm font-semibold uppercase tracking-[0.15em] text-muted-foreground">
-          Live vs. shadow — most recent cycles
-        </h2>
+      <section className="space-y-4">
+        <div>
+          <h2 className="text-base font-semibold tracking-tight">Live vs. shadow</h2>
+          <p className="text-sm text-muted-foreground">Most recent cycles, full reasoning, nothing truncated.</p>
+        </div>
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {recentForComparison.map((r, i) => (
-            <div key={`${r.timestamp}-${i}`} className="space-y-1.5">
-              <div className="flex items-center justify-between px-1">
-                <span className="font-mono text-xs font-medium">{r.underlying}</span>
-                <span className="font-mono text-[10px] text-muted-foreground">
+            <div key={`${r.timestamp}-${i}`} className="space-y-2">
+              <div className="flex items-center justify-between px-0.5">
+                <span className="text-sm font-semibold">{r.underlying}</span>
+                <span className="font-mono text-[11px] tabular-nums text-muted-foreground">
                   {new Date(r.timestamp).toLocaleString(undefined, {
                     month: "short",
                     day: "numeric",
@@ -101,8 +71,8 @@ export default async function DashboardPage() {
             </div>
           ))}
           {recentForComparison.length === 0 && (
-            <p className="col-span-full py-8 text-center text-sm text-muted-foreground">
-              No cycles logged yet.
+            <p className="col-span-full py-10 text-center text-sm text-muted-foreground">
+              No cycles logged yet — check back after the next scheduled run.
             </p>
           )}
         </div>
@@ -110,17 +80,20 @@ export default async function DashboardPage() {
 
       <Separator />
 
-      <section className="space-y-3">
-        <h2 className="font-mono text-sm font-semibold uppercase tracking-[0.15em] text-muted-foreground">
-          All trade cycles
-        </h2>
+      <section className="space-y-4">
+        <div>
+          <h2 className="text-base font-semibold tracking-tight">All trade cycles</h2>
+          <p className="text-sm text-muted-foreground">Full history, most recent first.</p>
+        </div>
         <CycleTable records={records} />
       </section>
 
-      <footer className="pt-4 font-mono text-[10px] text-muted-foreground">
-        Data source: audit_log.jsonl, pushed by the scheduler after each cycle. This
-        page fetches it fresh on every request — nothing here is cached at build
-        time.
+      <footer className="border-t pt-5 text-xs text-muted-foreground">
+        Data source:{" "}
+        <code className="rounded bg-muted px-1 py-0.5 font-mono text-[0.85em]">audit_log.jsonl</code>,
+        pushed after every cycle by a GitHub Actions workflow running on a 15-minute
+        schedule — not anyone&apos;s laptop. This page fetches it fresh on every
+        request, never cached at build time.
       </footer>
     </div>
   );
