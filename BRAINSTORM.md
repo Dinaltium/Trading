@@ -211,6 +211,22 @@ QQQ, currently one of two live-tradeable symbols, shows the weakest signal of al
 
 Full report, disclosures, data fingerprint, and all trade-level CSVs are in the run folder and committed to the repo — this is real evidence for the "Creativity" and "risk-adjusted" judging criteria (we tested broadly and can show our work), not just a claim.
 
+## 15. Real architecture fix: unified GitHub Actions runtime + dashboard whitebox
+
+User pushed back hard, correctly, on the local-machine-vs-website split — not a small complaint, a real structural gap: the trading loop only ran on a laptop, meaning (a) it stopped the instant the terminal closed, (b) judges had no way to independently verify it was actually running, (c) "local machine" and "Vercel website" felt like two disconnected systems instead of one. Asked for a genuine fix, not another explainer doc.
+
+**Real fix, not a patch:**
+
+- `src/scheduler.py` gained `--once` mode — runs exactly one tick and exits, instead of only supporting a long-running `BlockingScheduler` loop. Same file, same logic, callable either way.
+- `.github/workflows/trading-cycle.yml` — new GitHub Actions workflow, cron `*/15 13-20 * * 1-5` (15-min intervals across US market hours + buffer, weekdays), calls `python -m src.scheduler --once` on GitHub's own servers. Also has `workflow_dispatch` for manual triggering. `permissions: contents: write` so it can push the audit log itself.
+- Since the repo is public, the Actions tab is a genuine, unfiltered, always-available execution log — anyone (including judges) can watch a cycle run live with full printed output, no access request needed. This is arguably a stronger "whitebox" mechanism than the dashboard itself.
+- Secrets (`ALPACA_API_KEY`, `ALPACA_SECRET_KEY`, `GROQ_API_KEY`, `FEATHER_API_KEY`) set as GitHub Actions repo secrets via `gh secret set` directly from local `.env` values — never printed, never pasted through chat. `MISTRAL_API_KEY` not set (still empty locally too).
+- **Local laptop runs still work identically** — same script, same file. The two were never meant to diverge; they just hadn't been exercised as literally-the-same-code until now. Running both simultaneously double-logs (harmless, just redundant) — once Actions is live, the laptop run becomes optional (manual testing/debugging only), not required.
+
+**Real bug caught by actually running it, not just writing it:** first Actions run failed immediately — `ModuleNotFoundError: No module named 'openai'`. `requirements.txt` was stale; `openai` had been `pip install`ed locally ad-hoc earlier in the session (for the model adapter) but the requirements file was never refrozen, so it worked locally and broke instantly in Actions' clean environment. Refroze `requirements.txt` from the actual venv, fixed. Second run succeeded end-to-end (1m39s total, correctly detected market closed and skipped cleanly) — confirmed live, not just assumed from reading the YAML.
+
+**Dashboard whitebox pass:** `dashboard/src/components/model-comparison.tsx` rewritten — every model's full reasoning text now shown (previously only Groq's), the exact signal values every model saw are displayed per cycle (price, P(Up), IV rank, IV pct, VRP, regime), and the risk gate's full reasoning is shown inline. Nothing truncated, nothing behind a hover tooltip.
+
 Next: decide on QQQ vs DIA before Monday, then Item 8 (go live — fresh dedicated competition account, then keep it running + pull real audit-log entries into the write-up as they come in).
 
 ## 12. Dashboard built (Next.js + shadcn/ui, deployed to Vercel)
