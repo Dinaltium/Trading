@@ -1,0 +1,86 @@
+"""
+Runs orchestrator.run_cycle() on a fixed interval during US equity market hours.
+Market-hours check uses Alpaca's own clock endpoint rather than hand-rolled timezone
+math, so it stays correct across holidays/early closes without extra bookkeeping.
+"""
+
+import os
+import time
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeoutError
+from datetime import datetime
+
+from alpaca.trading.client import TradingClient
+from apscheduler.schedulers.blocking import BlockingScheduler
+from dotenv import load_dotenv
+
+from src.audit_log import push_audit_log
+from src.orchestrator import run_cycle
+
+UNDERLYINGS = ["SPY", "QQQ"]
+INTERVAL_MINUTES = 15
+CYCLE_TIMEOUT_SECONDS = 90  # alpaca-py sets no request timeout anywhere in its REST layer
+                            # (confirmed empirically — grep found none in common/rest.py), so a
+                            # stalled connection hangs indefinitely with no built-in recovery.
+                            # This is the outer safety net: one stuck network call can't freeze
+                            # the whole scheduler forever. See BRAINSTORM.md weekend soak-test log.
+
+
+def market_is_open(trading_client: TradingClient) -> bool:
+    clock = trading_client.get_clock()
+    return bool(clock.is_open)
+
+
+def run_all_cycles(dry_run: bool = True, test_mode: bool = False):
+    """test_mode=True bypasses the market-hours gate — for weekend soak-testing only.
+    Never set True once the loop is running against a real submission window."""
+    load_dotenv(override=True)
+    trading_client = TradingClient(os.getenv("ALPACA_API_KEY"), os.getenv("ALPACA_SECRET_KEY"), paper=True)
+
+    if not test_mode and not market_is_open(trading_client):
+        print(f"[{datetime.now().isoformat()}] market closed, skipping cycle")
+        return
+
+    for underlying in UNDERLYINGS:
+        print(f"[{datetime.now().isoformat()}] running cycle for {underlying} (dry_run={dry_run})")
+        try:
+            with ThreadPoolExecutor(max_workers=1) as pool:
+                future = pool.submit(run_cycle, underlying, dry_run)
+                result = future.result(timeout=CYCLE_TIMEOUT_SECONDS)
+            decision = (result.get("live_decision") or {}).get("selected_strategy", "n/a")
+            verdict = (result.get("risk_gate_verdict") or {}).get("reason", "n/a")
+            print(f"  -> decision={decision}  risk_gate={verdict}")
+        except FutureTimeoutError:
+            print(f"  -> TIMEOUT: cycle for {underlying} exceeded {CYCLE_TIMEOUT_SECONDS}s, abandoning this cycle "
+                  f"(underlying thread keeps running in the background until its stalled call eventually resolves "
+                  f"or the process exits — Python cannot forcibly kill a thread, only stop waiting on it)")
+        except Exception as e:
+            print(f"  -> ERROR in cycle for {underlying}: {e}")
+
+    if not test_mode:
+        # push once per tick (not per underlying) — see audit_log.push_audit_log docstring.
+        # Never pushes during weekend/test_mode soak runs, to keep the repo history meaningful.
+        pushed = push_audit_log()
+        print(f"  -> audit log pushed to GitHub: {pushed}")
+
+
+def start(dry_run: bool = True, test_mode: bool = False, interval_minutes: int = INTERVAL_MINUTES):
+    scheduler = BlockingScheduler()
+    scheduler.add_job(
+        run_all_cycles,
+        "interval",
+        minutes=interval_minutes,
+        kwargs={"dry_run": dry_run, "test_mode": test_mode},
+        next_run_time=datetime.now(),
+    )
+    print(f"scheduler starting: every {interval_minutes}min, dry_run={dry_run}, test_mode={test_mode}. Ctrl+C to stop.")
+    try:
+        scheduler.start()
+    except (KeyboardInterrupt, SystemExit):
+        print("scheduler stopped")
+
+
+if __name__ == "__main__":
+    import sys
+
+    test_mode = "--test-mode" in sys.argv
+    start(dry_run=True, test_mode=test_mode)

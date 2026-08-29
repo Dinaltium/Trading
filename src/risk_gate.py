@@ -19,7 +19,11 @@ class TradeProposal:
     underlying: str                  # e.g. "SPY"
     max_profit_per_contract: float   # dollars, per 1 contract (already x100 multiplier applied)
     max_loss_per_contract: float     # dollars, per 1 contract
-    model_confidence: float          # P(win) in [0,1], from the LLM/classifier proposal
+    classifier_win_probability: float  # calibrated P(win) from the LightGBM classifier (signals/direction.py).
+                                        # NEVER the LLM's self-reported confidence_score — an LLM confidence
+                                        # number is not a calibrated probability and feeding it into Kelly
+                                        # sizing is exactly the math-hallucination risk this gate exists to avoid.
+    llm_confidence_score: float = 0.0  # LLM's own confidence, kept for audit-log/display only — never sized on
 
 
 @dataclass
@@ -65,7 +69,7 @@ def evaluate(proposal: TradeProposal, account: AccountState, limits: Optional[di
     if not already_in_this_name and len(account.open_underlyings) >= limits["max_underlyings_concurrent"]:
         return GateResult(False, f"max_underlyings_concurrent ({limits['max_underlyings_concurrent']}) reached")
 
-    kelly = _kelly_fraction(proposal.model_confidence, proposal.max_profit_per_contract, proposal.max_loss_per_contract)
+    kelly = _kelly_fraction(proposal.classifier_win_probability, proposal.max_profit_per_contract, proposal.max_loss_per_contract)
     if kelly <= 0:
         return GateResult(False, "negative or zero edge per Kelly criterion — no trade")
 
@@ -103,17 +107,17 @@ if __name__ == "__main__":
     limits = load_limits()
     acct = AccountState(equity=100_000, open_risk_dollars=0, open_underlyings=set(), daily_pnl_pct=0.0)
 
-    good = TradeProposal("iron_condor", "SPY", max_profit_per_contract=150, max_loss_per_contract=350, model_confidence=0.78)
+    good = TradeProposal("iron_condor", "SPY", max_profit_per_contract=150, max_loss_per_contract=350, classifier_win_probability=0.78)
     print(evaluate(good, acct, limits))
 
-    bad_strategy = TradeProposal("naked_call", "SPY", 150, 350, 0.62)
+    bad_strategy = TradeProposal("naked_call", "SPY", 150, 350, classifier_win_probability=0.62)
     print(evaluate(bad_strategy, acct, limits))
 
-    no_edge = TradeProposal("iron_condor", "SPY", max_profit_per_contract=150, max_loss_per_contract=350, model_confidence=0.45)
+    no_edge = TradeProposal("iron_condor", "SPY", max_profit_per_contract=150, max_loss_per_contract=350, classifier_win_probability=0.45)
     print(evaluate(no_edge, acct, limits))
 
     drawdown_acct = AccountState(equity=100_000, open_risk_dollars=0, open_underlyings=set(), daily_pnl_pct=-0.06)
     print(evaluate(good, drawdown_acct, limits))
 
     diversify_acct = AccountState(equity=100_000, open_risk_dollars=0, open_underlyings={"SPY", "QQQ", "AAPL"}, daily_pnl_pct=0.0)
-    print(evaluate(TradeProposal("iron_condor", "MSFT", 150, 350, 0.62), diversify_acct, limits))
+    print(evaluate(TradeProposal("iron_condor", "MSFT", 150, 350, classifier_win_probability=0.62), diversify_acct, limits))
