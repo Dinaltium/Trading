@@ -68,6 +68,8 @@ def run_cycle(underlying: str, dry_run: bool = True) -> dict:
     stock_client = StockHistoricalDataClient(key, sec)
     trading_client = TradingClient(key, sec, paper=True)  # literal True — never read from config, see execution notes
 
+    account_state = get_account_state(trading_client)  # fetched once per cycle, always logged —
+                                                          # this is the equity-over-time series the dashboard charts
     price = get_current_price(stock_client, underlying)
     vol = compute_vol_signals(opt_client, stock_client, underlying, price)
     direction = train_and_predict(stock_client, underlying)
@@ -110,7 +112,6 @@ def run_cycle(underlying: str, dry_run: bool = True) -> dict:
         if spread is None:
             risk_verdict = {"approved": False, "reason": "could not build spread from live chain"}
         else:
-            account_state = get_account_state(trading_client)
             proposal = TradeProposal(
                 strategy=spread.strategy,
                 underlying=underlying,
@@ -136,6 +137,7 @@ def run_cycle(underlying: str, dry_run: bool = True) -> dict:
         risk_gate_verdict=risk_verdict,
         fill_result=fill_result,
         dry_run=dry_run,
+        account_equity=account_state.equity,
     )
     return record
 

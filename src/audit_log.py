@@ -36,6 +36,7 @@ def write_cycle_record(
     risk_gate_verdict: Optional[dict],
     fill_result: Optional[dict],
     dry_run: bool,
+    account_equity: Optional[float] = None,
     log_path: Path = LOG_PATH,
 ) -> dict:
     log_path.parent.mkdir(exist_ok=True)
@@ -43,6 +44,7 @@ def write_cycle_record(
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "underlying": underlying,
         "dry_run": dry_run,
+        "account_equity": account_equity,
         "signals": _to_jsonable(signals),
         "live_decision": {"provider": "groq", **_to_jsonable(live_decision)} if live_decision else None,
         "shadow_decisions": _to_jsonable(shadow_decisions),
