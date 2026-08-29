@@ -188,7 +188,7 @@ This is the "Application URL" for hackathon submission. Full detail: `BRAINSTORM
 ```
 Trading/
 ├── AGENTS.md              # this file
-├── README.md               # (superseded by this file — keep or merge, see note)
+├── README.md               # public-facing project overview (this file is for AI agents building here)
 ├── LINKS.md                 # raw reference links
 ├── dashboard/               # Next.js + shadcn/ui read-only dashboard, deployed to Vercel
 ├── src/
