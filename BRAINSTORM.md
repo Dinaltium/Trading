@@ -188,7 +188,30 @@ User asked whether `.env` could become toggleable settings (which model, which u
 **Auth architecture pivot, mid-build:** originally planned a second, fully separate password-protected Vercel project (user's explicit choice). Hit a real tool constraint: `create_git_project` dedupes by repository — a second `create_git_project` call against the same repo just reused the existing public project instead of creating a new one, no matter the `projectName` passed. The file-based fallback (`deploy_to_vercel`) would have required pasting the entire app's source through my own context as literal tool-call parameters (confirmed painfully — one attempt with `package-lock.json` included blew past a 25k-token read cap, a trimmed retry still cost ~30k+ tokens for marginal benefit). Pivoted instead to a **path-scoped auth gate on the same public project**: `dashboard/src/proxy.ts` (Next.js 16 renamed `middleware.ts` to `proxy.ts` — confirmed via the framework's own bundled docs, not stale training data) checks `ADMIN_PASSWORD` via HTTP Basic Auth, `matcher` scoped to only `/admin/:path*` and `/api/live-settings/:path*` — the public `/` dashboard route is untouched by the proxy file entirely and stays open for judges. Fails closed (503) if `ADMIN_PASSWORD` isn't configured, rather than defaulting open. Verified live post-deploy: public `/` returns 200, `/admin` correctly returned 503 (password not yet set) rather than either an error or unintended access.
 - Still needs two env vars added manually on the Vercel project by the user (no tool available to set them remotely, and they shouldn't be pasted through chat regardless): `ADMIN_PASSWORD` and `GITHUB_TOKEN` (repo-scope PAT on Dinaltium/Trading).
 
-Next: Item 8 (go live — fresh dedicated competition account, then keep it running + pull real audit-log entries into the write-up as they come in).
+## 14. Multi-symbol backtest (weekend, markets closed — using `alpaca-trading-backtest` skill for the first time)
+
+Ran the `alpaca-trading-backtest` skill (installed since Day 1, never used until now) to answer the question from the other chat: is SPY/QQQ actually where the signal edge is, or did we just pick two tickers without checking?
+
+Scope, confirmed with user before running: walk-forward backtest of the **exact production classifier logic** (`src/signals/direction.py`'s features/label, unchanged) as a long-only equity proxy across SPY, QQQ, DIA, IWM, AAPL, TSLA — 2023-01-01 to 2026-08-28, retrained every 60 trading days to avoid look-ahead bias. Run folder: `runs/2026-08-29_multi-symbol_lightgbm-direction_1Day/`.
+
+**This validates signal quality, not real options P&L** — the skill's fill machinery is equity-oriented, and Alpaca's option data being snapshot-only (no historical IV, confirmed earlier) rules out a real spread-level backtest in the time available. So: does the classifier call direction better than a coin flip, on each symbol.
+
+**Result — genuinely useful, somewhat uncomfortable finding:**
+
+| Symbol | Win rate | Profit factor | Read |
+|---|---|---|---|
+| SPY | 66.7% (24 trades) | 1.26 | real edge |
+| DIA | 75.0% (8 trades) | 1.85 | real edge, but thin sample |
+| QQQ | 22.2% (9 trades) | 0.97 | **no edge — currently in the live set** |
+| IWM | 47.4% (19 trades) | 0.97 | no edge, coin-flip |
+| AAPL | 58.8% (17 trades) | 1.77 | real edge (not a live-trading candidate — earnings risk) |
+| TSLA | 58.3% (12 trades) | 1.69 | real edge (not a live-trading candidate — earnings risk) |
+
+QQQ, currently one of two live-tradeable symbols, shows the weakest signal of all 6 — worse than DIA, which isn't even in the current set. Worth a real decision before Monday: swap QQQ for DIA, or keep QQQ for other reasons (liquidity, name recognition) despite the weaker backtested signal. Not yet decided — flagging for the user rather than silently swapping.
+
+Full report, disclosures, data fingerprint, and all trade-level CSVs are in the run folder and committed to the repo — this is real evidence for the "Creativity" and "risk-adjusted" judging criteria (we tested broadly and can show our work), not just a claim.
+
+Next: decide on QQQ vs DIA before Monday, then Item 8 (go live — fresh dedicated competition account, then keep it running + pull real audit-log entries into the write-up as they come in).
 
 ## 12. Dashboard built (Next.js + shadcn/ui, deployed to Vercel)
 
