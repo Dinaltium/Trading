@@ -1,0 +1,6 @@
+{
+  "modeled": false,
+  "reason": "Alpaca US equities trading is commission-free. Regulatory pass-through fees (SEC Section 31 fee, FINRA TAF) are fractions of a cent per trade at this size and were excluded from the simulation.",
+  "fee_schedule_url": "https://files.alpaca.markets/disclosures/library/BrokFeeSched.pdf",
+  "note": "Not applicable to this run since the production system trades options spreads, not the equities simulated here - this backtest validates signal quality only, see notes.md"
+}

@@ -1,0 +1,11 @@
+{
+  "data_source": "Alpaca CLI (alpaca data bars)",
+  "feed": "sip",
+  "adjustment": "split",
+  "asset_class": "us_equity",
+  "market_hours": "regular hours only (Alpaca daily bars are RTH-only by default)",
+  "calendar_handling": "no explicit holiday filtering needed - Alpaca daily bars only include actual trading days",
+  "dividends": "not modeled - adjustment=split adjusts for splits only, not dividends; a minor understatement of buy-and-hold total return for dividend-paying symbols (SPY, QQQ, DIA, IWM, AAPL all pay dividends), documented as a caveat",
+  "fees": "Alpaca US equities are commission-free; SEC/FINRA regulatory fees are negligible at this trade size and were excluded - see fee_source.json",
+  "random_seed": 42
+}

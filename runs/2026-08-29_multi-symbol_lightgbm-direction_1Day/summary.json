@@ -1,0 +1,134 @@
+{
+  "SPY": {
+    "strategy": {
+      "total_return_pct": 4.084,
+      "annualized_return_pct": 1.104,
+      "max_drawdown_pct": -11.2,
+      "sharpe": 0.177,
+      "n_trades": 24,
+      "win_rate_pct": 66.67,
+      "profit_factor": 1.256,
+      "final_equity": 104083.95
+    },
+    "benchmark": {
+      "total_return_pct": 102.025,
+      "annualized_return_pct": 21.268,
+      "max_drawdown_pct": -18.999,
+      "sharpe": 1.36,
+      "n_trades": 1,
+      "win_rate_pct": 100.0,
+      "profit_factor": null,
+      "final_equity": 200158.7
+    }
+  },
+  "QQQ": {
+    "strategy": {
+      "total_return_pct": -0.256,
+      "annualized_return_pct": -0.07,
+      "max_drawdown_pct": -12.92,
+      "sharpe": 0.033,
+      "n_trades": 9,
+      "win_rate_pct": 22.22,
+      "profit_factor": 0.972,
+      "final_equity": 99743.95
+    },
+    "benchmark": {
+      "total_return_pct": 170.882,
+      "annualized_return_pct": 31.424,
+      "max_drawdown_pct": -22.883,
+      "sharpe": 1.458,
+      "n_trades": 1,
+      "win_rate_pct": 100.0,
+      "profit_factor": null,
+      "final_equity": 266677.83
+    }
+  },
+  "DIA": {
+    "strategy": {
+      "total_return_pct": 8.245,
+      "annualized_return_pct": 2.196,
+      "max_drawdown_pct": -11.585,
+      "sharpe": 0.341,
+      "n_trades": 8,
+      "win_rate_pct": 75.0,
+      "profit_factor": 1.851,
+      "final_equity": 108245.29
+    },
+    "benchmark": {
+      "total_return_pct": 61.542,
+      "annualized_return_pct": 14.055,
+      "max_drawdown_pct": -16.512,
+      "sharpe": 1.053,
+      "n_trades": 1,
+      "win_rate_pct": 100.0,
+      "profit_factor": null,
+      "final_equity": 160959.03
+    }
+  },
+  "IWM": {
+    "strategy": {
+      "total_return_pct": -0.546,
+      "annualized_return_pct": -0.15,
+      "max_drawdown_pct": -11.612,
+      "sharpe": 0.016,
+      "n_trades": 19,
+      "win_rate_pct": 47.37,
+      "profit_factor": 0.974,
+      "final_equity": 99453.79
+    },
+    "benchmark": {
+      "total_return_pct": 70.559,
+      "annualized_return_pct": 15.767,
+      "max_drawdown_pct": -27.88,
+      "sharpe": 0.808,
+      "n_trades": 1,
+      "win_rate_pct": 100.0,
+      "profit_factor": null,
+      "final_equity": 168106.63
+    }
+  },
+  "AAPL": {
+    "strategy": {
+      "total_return_pct": 15.335,
+      "annualized_return_pct": 3.99,
+      "max_drawdown_pct": -8.376,
+      "sharpe": 0.556,
+      "n_trades": 17,
+      "win_rate_pct": 58.82,
+      "profit_factor": 1.765,
+      "final_equity": 115335.29
+    },
+    "benchmark": {
+      "total_return_pct": 155.617,
+      "annualized_return_pct": 29.35,
+      "max_drawdown_pct": -33.434,
+      "sharpe": 1.127,
+      "n_trades": 1,
+      "win_rate_pct": 100.0,
+      "profit_factor": null,
+      "final_equity": 245394.53
+    }
+  },
+  "TSLA": {
+    "strategy": {
+      "total_return_pct": 30.056,
+      "annualized_return_pct": 7.472,
+      "max_drawdown_pct": -25.308,
+      "sharpe": 0.487,
+      "n_trades": 12,
+      "win_rate_pct": 58.33,
+      "profit_factor": 1.691,
+      "final_equity": 130056.31
+    },
+    "benchmark": {
+      "total_return_pct": 222.618,
+      "annualized_return_pct": 37.876,
+      "max_drawdown_pct": -53.766,
+      "sharpe": 0.844,
+      "n_trades": 1,
+      "win_rate_pct": 100.0,
+      "profit_factor": null,
+      "final_equity": 294378.32
+    }
+  }
+}

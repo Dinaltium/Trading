@@ -1,0 +1,29 @@
+{
+  "name": "production-direction-signal-walk-forward",
+  "description": "Walk-forward backtest of the exact classifier logic used in src/signals/direction.py, as a long-only equity proxy strategy (real production system trades options spreads, not the underlying stock).",
+  "symbols": ["SPY", "QQQ", "DIA", "IWM", "AAPL", "TSLA"],
+  "timeframe": "1Day",
+  "model": {
+    "type": "LightGBM binary classifier, isotonic-calibrated (CalibratedClassifierCV, cv=3)",
+    "features": ["return_1d", "return_5d", "volatility_10d", "sma_ratio", "rsi_14"],
+    "label": "close.shift(-3) / close - 1.0 > 0.005",
+    "retrain_cadence_days": 60,
+    "initial_train_warmup_days": 250
+  },
+  "entry": {
+    "condition": "p_up >= 0.56",
+    "signal_timing": "completed bar close (day T)",
+    "fill_timing": "next trading day open (T+1)",
+    "fill_model": "next_open",
+    "slippage_bps": 5,
+    "sizing": "100% of available cash, long-only, no leverage"
+  },
+  "exit": {
+    "condition": "fixed 3-trading-day hold from entry fill day",
+    "fill_timing": "open of the exit day",
+    "slippage_bps": 5
+  },
+  "benchmark": "buy-and-hold same symbol, entered at first bar's open",
+  "initial_cash_per_symbol": 100000.0,
+  "portfolio_construction": "each symbol backtested in isolation with its own starting capital - not combined into one portfolio"
+}

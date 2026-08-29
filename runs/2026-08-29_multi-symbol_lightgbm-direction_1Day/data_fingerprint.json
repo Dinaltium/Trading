@@ -1,0 +1,16 @@
+{
+  "source": "Alpaca CLI data bars",
+  "feed": "sip",
+  "adjustment": "split",
+  "timeframe": "1Day",
+  "start": "2023-01-01",
+  "end": "2026-08-28",
+  "files": {
+    "bars_AAPL.json": "a3e55c1f1b8d4c97",
+    "bars_DIA.json": "8a83d269bacfdd99",
+    "bars_IWM.json": "6bedf47a498fd220",
+    "bars_QQQ.json": "662050372f3bc548",
+    "bars_SPY.json": "c01ca0a64c6a1438",
+    "bars_TSLA.json": "8a40114a3780841d"
+  }
+}
