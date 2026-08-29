@@ -14,9 +14,9 @@ from apscheduler.schedulers.blocking import BlockingScheduler
 from dotenv import load_dotenv
 
 from src.audit_log import push_audit_log
+from src.live_settings import fetch_live_settings
 from src.orchestrator import run_cycle
 
-UNDERLYINGS = ["SPY", "QQQ"]
 INTERVAL_MINUTES = 15
 CYCLE_TIMEOUT_SECONDS = 90  # alpaca-py sets no request timeout anywhere in its REST layer
                             # (confirmed empirically — grep found none in common/rest.py), so a
@@ -40,11 +40,17 @@ def run_all_cycles(dry_run: bool = True, test_mode: bool = False):
         print(f"[{datetime.now().isoformat()}] market closed, skipping cycle")
         return
 
-    for underlying in UNDERLYINGS:
+    settings = fetch_live_settings()  # pulled fresh every tick — see src/live_settings.py
+    if settings.trading_paused:
+        print(f"[{datetime.now().isoformat()}] trading paused via /admin, skipping cycle")
+        return
+    print(f"[{datetime.now().isoformat()}] live_provider={settings.active_model_provider}  underlyings={settings.underlyings}")
+
+    for underlying in settings.underlyings:
         print(f"[{datetime.now().isoformat()}] running cycle for {underlying} (dry_run={dry_run})")
         try:
             with ThreadPoolExecutor(max_workers=1) as pool:
-                future = pool.submit(run_cycle, underlying, dry_run)
+                future = pool.submit(run_cycle, underlying, dry_run, settings.active_model_provider)
                 result = future.result(timeout=CYCLE_TIMEOUT_SECONDS)
             decision = (result.get("live_decision") or {}).get("selected_strategy", "n/a")
             verdict = (result.get("risk_gate_verdict") or {}).get("reason", "n/a")

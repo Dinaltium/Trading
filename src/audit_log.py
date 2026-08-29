@@ -37,6 +37,7 @@ def write_cycle_record(
     fill_result: Optional[dict],
     dry_run: bool,
     account_equity: Optional[float] = None,
+    live_provider: str = "groq",
     log_path: Path = LOG_PATH,
 ) -> dict:
     log_path.parent.mkdir(exist_ok=True)
@@ -46,7 +47,7 @@ def write_cycle_record(
         "dry_run": dry_run,
         "account_equity": account_equity,
         "signals": _to_jsonable(signals),
-        "live_decision": {"provider": "groq", **_to_jsonable(live_decision)} if live_decision else None,
+        "live_decision": {"provider": live_provider, **_to_jsonable(live_decision)} if live_decision else None,
         "shadow_decisions": _to_jsonable(shadow_decisions),
         "risk_gate_verdict": _to_jsonable(risk_gate_verdict),
         "fill_result": _to_jsonable(fill_result),

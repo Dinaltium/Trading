@@ -27,7 +27,8 @@ from src.risk_gate import AccountState, TradeProposal, evaluate as evaluate_risk
 from src.signals.direction import train_and_predict
 from src.signals.iv_rank import compute_vol_signals
 
-SHADOW_PROVIDERS = ["featherless", "mistral"]  # + claude_code_cli, called separately (subprocess, not HTTP)
+ALL_HTTP_PROVIDERS = ["groq", "featherless", "mistral"]  # + claude_code_cli, called separately (subprocess, not HTTP)
+                                                            # which one is "live" is configurable — see src/live_settings.py
 
 
 def get_account_state(trading_client: TradingClient) -> AccountState:
@@ -62,7 +63,7 @@ def _parse_decision(content: Optional[str]) -> Optional[dict]:
         return None
 
 
-def run_cycle(underlying: str, dry_run: bool = True) -> dict:
+def run_cycle(underlying: str, dry_run: bool = True, live_provider: str = "groq") -> dict:
     key, sec = os.getenv("ALPACA_API_KEY"), os.getenv("ALPACA_SECRET_KEY")
     opt_client = OptionHistoricalDataClient(key, sec)
     stock_client = StockHistoricalDataClient(key, sec)
@@ -90,13 +91,15 @@ def run_cycle(underlying: str, dry_run: bool = True) -> dict:
     }
     payload = build_user_payload(signals)
 
-    # --- live decision (Groq only) ---
-    live_result = call_openai_compatible("groq", SYSTEM_PROMPT, payload)
+    # --- live decision (whichever provider is configured active — default groq) ---
+    live_result = call_openai_compatible(live_provider, SYSTEM_PROMPT, payload)
     live_decision = _parse_decision(live_result.content) if live_result.ok else None
 
-    # --- shadow decisions, never executed ---
+    # --- shadow decisions, never executed — every HTTP provider except whichever is live ---
     shadow_decisions = {}
-    for provider in SHADOW_PROVIDERS:
+    for provider in ALL_HTTP_PROVIDERS:
+        if provider == live_provider:
+            continue
         result = call_openai_compatible(provider, SYSTEM_PROMPT, payload)
         shadow_decisions[provider] = {"ok": result.ok, "decision": _parse_decision(result.content), "error": result.error}
 
@@ -138,6 +141,7 @@ def run_cycle(underlying: str, dry_run: bool = True) -> dict:
         fill_result=fill_result,
         dry_run=dry_run,
         account_equity=account_state.equity,
+        live_provider=live_provider,
     )
     return record
 

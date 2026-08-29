@@ -1,0 +1,7 @@
+{
+  "active_model_provider": "groq",
+  "underlyings": ["SPY", "QQQ"],
+  "trading_paused": false,
+  "updated_at": null,
+  "updated_by": null
+}
