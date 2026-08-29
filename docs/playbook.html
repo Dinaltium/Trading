@@ -1,0 +1,612 @@
+<title>Trading Agent Playbook</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+<style>
+  :root {
+    color-scheme: light dark;
+    --surface: #fcfcfb;
+    --page: #f9f9f7;
+    --text: #0b0b0b;
+    --text-2: #52514e;
+    --muted: #898781;
+    --border: rgba(11,11,11,0.10);
+    --border-strong: rgba(11,11,11,0.18);
+    --gridline: #e1e0d9;
+
+    --blue: #2a78d6;    /* live / local */
+    --orange: #eb6834;  /* vercel / shadow */
+    --aqua: #1baf7a;    /* good / done */
+    --good: #0ca30c;
+    --critical: #d03b3b;
+    --warning: #a86a00;
+
+    --code-bg: #f1efe9;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --surface: #1a1a19;
+      --page: #0d0d0d;
+      --text: #ffffff;
+      --text-2: #c3c2b7;
+      --muted: #898781;
+      --border: rgba(255,255,255,0.10);
+      --border-strong: rgba(255,255,255,0.18);
+      --gridline: #2c2c2a;
+
+      --blue: #3987e5;
+      --orange: #d95926;
+      --aqua: #199e70;
+      --good: #0ca30c;
+      --critical: #e66767;
+      --warning: #d99a2b;
+
+      --code-bg: #212120;
+    }
+  }
+  :root[data-theme="dark"] {
+    --surface: #1a1a19;
+    --page: #0d0d0d;
+    --text: #ffffff;
+    --text-2: #c3c2b7;
+    --muted: #898781;
+    --border: rgba(255,255,255,0.10);
+    --border-strong: rgba(255,255,255,0.18);
+    --gridline: #2c2c2a;
+
+    --blue: #3987e5;
+    --orange: #d95926;
+    --aqua: #199e70;
+    --good: #0ca30c;
+    --critical: #e66767;
+    --warning: #d99a2b;
+
+    --code-bg: #212120;
+  }
+
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    background: var(--page);
+    color: var(--text);
+  }
+  body {
+    font-family: "IBM Plex Sans", system-ui, -apple-system, sans-serif;
+    font-size: 16px;
+    line-height: 1.65;
+  }
+  code, .mono, pre {
+    font-family: "IBM Plex Mono", "SFMono-Regular", Consolas, monospace;
+  }
+  h1, h2, h3 { text-wrap: balance; font-weight: 600; letter-spacing: -0.01em; }
+  p { max-width: 68ch; }
+
+  a { color: var(--blue); }
+
+  /* ---------- shell ---------- */
+  .shell {
+    display: grid;
+    grid-template-columns: 240px minmax(0, 1fr);
+    gap: 0;
+    max-width: 1180px;
+    margin: 0 auto;
+  }
+  @media (max-width: 860px) {
+    .shell { grid-template-columns: 1fr; }
+  }
+
+  /* ---------- nav rail ---------- */
+  nav.rail {
+    position: sticky;
+    top: 0;
+    align-self: start;
+    height: 100vh;
+    overflow-y: auto;
+    padding: 2rem 1.25rem 2rem 1.5rem;
+    border-right: 1px solid var(--border);
+  }
+  @media (max-width: 860px) {
+    nav.rail { position: static; height: auto; border-right: none; border-bottom: 1px solid var(--border); padding: 1.25rem 1.5rem; }
+  }
+  nav.rail .brand {
+    font-family: "IBM Plex Mono";
+    font-size: 0.7rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 1.5rem;
+  }
+  nav.rail ol {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    counter-reset: rail;
+  }
+  nav.rail li { counter-increment: rail; margin-bottom: 0.15rem; }
+  nav.rail a {
+    display: flex;
+    gap: 0.6rem;
+    padding: 0.4rem 0.5rem;
+    border-radius: 6px;
+    color: var(--text-2);
+    text-decoration: none;
+    font-size: 0.87rem;
+  }
+  nav.rail a:hover { background: var(--code-bg); color: var(--text); }
+  nav.rail a::before {
+    content: counter(rail, decimal-leading-zero);
+    font-family: "IBM Plex Mono";
+    font-size: 0.72rem;
+    color: var(--muted);
+    padding-top: 0.1rem;
+  }
+
+  /* ---------- main ---------- */
+  main { padding: 2.5rem clamp(1.25rem, 4vw, 3.5rem) 6rem; min-width: 0; }
+
+  header.hero {
+    padding-bottom: 2rem;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 2.5rem;
+  }
+  header.hero .eyebrow {
+    font-family: "IBM Plex Mono";
+    font-size: 0.72rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 0.6rem;
+  }
+  header.hero h1 { font-size: clamp(1.8rem, 3vw, 2.4rem); margin: 0 0 0.5rem; }
+  header.hero .sub { color: var(--text-2); max-width: 62ch; margin: 0 0 1.25rem; }
+
+  .status-row { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-family: "IBM Plex Mono";
+    font-size: 0.76rem;
+    padding: 0.3rem 0.65rem;
+    border-radius: 999px;
+    border: 1px solid var(--border-strong);
+    color: var(--text-2);
+    white-space: nowrap;
+  }
+  .pill .dot { width: 7px; height: 7px; border-radius: 50%; flex: none; }
+  .dot.good { background: var(--good); }
+  .dot.blue { background: var(--blue); }
+  .dot.warn { background: var(--warning); }
+  .dot.crit { background: var(--critical); }
+
+  section { margin-bottom: 3.25rem; scroll-margin-top: 1.5rem; }
+  section h2 {
+    font-size: 1.05rem;
+    font-family: "IBM Plex Mono";
+    letter-spacing: 0.02em;
+    display: flex;
+    align-items: baseline;
+    gap: 0.6rem;
+    margin: 0 0 1.1rem;
+  }
+  section h2 .num { color: var(--muted); font-weight: 400; }
+  section h3 { font-size: 1rem; margin: 1.5rem 0 0.6rem; }
+
+  /* ---------- two-systems split ---------- */
+  .split {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  @media (max-width: 640px) { .split { grid-template-columns: 1fr; } }
+  .split > div { background: var(--surface); padding: 1.5rem; }
+  .split h3 {
+    margin-top: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-family: "IBM Plex Mono";
+    font-size: 0.95rem;
+  }
+  .split h3 .sw { width: 9px; height: 9px; border-radius: 50%; }
+  .split ul { margin: 0.75rem 0; padding-left: 1.1rem; }
+  .split li { margin-bottom: 0.45rem; color: var(--text-2); font-size: 0.92rem; }
+  .split .cant { color: var(--critical); }
+  .split code { background: var(--code-bg); padding: 0.1rem 0.35rem; border-radius: 4px; font-size: 0.85em; }
+
+  /* ---------- pipeline diagram ---------- */
+  .pipeline {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .pstep {
+    display: grid;
+    grid-template-columns: 2.4rem 1fr;
+    gap: 1rem;
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+  }
+  .pstep:last-child { border-bottom: none; }
+  .pstep .n {
+    font-family: "IBM Plex Mono";
+    color: var(--muted);
+    font-size: 0.85rem;
+    padding-top: 0.15rem;
+  }
+  .pstep .body b { display: block; margin-bottom: 0.15rem; }
+  .pstep .body span { color: var(--text-2); font-size: 0.9rem; }
+  .pstep.branch { background: var(--code-bg); }
+  .pstep .tag {
+    display: inline-block;
+    font-family: "IBM Plex Mono";
+    font-size: 0.7rem;
+    padding: 0.1rem 0.4rem;
+    border-radius: 4px;
+    margin-right: 0.35rem;
+    margin-top: 0.35rem;
+  }
+  .tag.live { background: color-mix(in srgb, var(--blue) 18%, transparent); color: var(--blue); }
+  .tag.shadow { background: color-mix(in srgb, var(--muted) 20%, transparent); color: var(--text-2); }
+
+  /* ---------- file cards ---------- */
+  .filegrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 0.9rem; }
+  .fcard {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1rem 1.1rem;
+    background: var(--surface);
+  }
+  .fcard .path {
+    font-family: "IBM Plex Mono";
+    font-size: 0.82rem;
+    color: var(--blue);
+    display: block;
+    margin-bottom: 0.5rem;
+    word-break: break-all;
+  }
+  .fcard p { margin: 0; font-size: 0.88rem; color: var(--text-2); }
+  .group-label {
+    font-family: "IBM Plex Mono";
+    font-size: 0.72rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin: 1.75rem 0 0.75rem;
+  }
+  .group-label:first-child { margin-top: 0; }
+
+  /* ---------- why-list ---------- */
+  .why {
+    border-left: 3px solid var(--blue);
+    padding: 0.15rem 0 0.15rem 1.1rem;
+    margin-bottom: 1.1rem;
+  }
+  .why b { display: block; margin-bottom: 0.2rem; }
+  .why p { margin: 0; color: var(--text-2); font-size: 0.92rem; }
+
+  /* ---------- run blocks ---------- */
+  .runblock {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    margin-bottom: 1.25rem;
+  }
+  .runblock .head {
+    padding: 0.7rem 1.1rem;
+    font-family: "IBM Plex Mono";
+    font-size: 0.82rem;
+    background: var(--code-bg);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+  }
+  .runblock pre {
+    margin: 0;
+    padding: 1rem 1.1rem;
+    font-size: 0.85rem;
+    overflow-x: auto;
+    background: var(--surface);
+    line-height: 1.55;
+  }
+  .runblock .note { padding: 0 1.1rem 1rem; margin: 0; color: var(--text-2); font-size: 0.87rem; }
+
+  /* ---------- status table ---------- */
+  table.status { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+  table.status th, table.status td { text-align: left; padding: 0.6rem 0.75rem; border-bottom: 1px solid var(--border); }
+  table.status th { font-family: "IBM Plex Mono"; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); font-weight: 500; }
+  .stateicon { font-family: "IBM Plex Mono"; }
+  .stateicon.done { color: var(--good); }
+  .stateicon.pending { color: var(--warning); }
+  .stateicon.todo { color: var(--muted); }
+  table.status .overflow-wrap { overflow-x: auto; }
+
+  /* ---------- cheat sheet ---------- */
+  .cheat {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.5rem 1.75rem;
+  }
+  .qa { margin-bottom: 1.3rem; }
+  .qa:last-child { margin-bottom: 0; }
+  .qa .q { font-weight: 600; margin-bottom: 0.3rem; }
+  .qa .q::before { content: "Q — "; color: var(--blue); font-family: "IBM Plex Mono"; }
+  .qa .a { color: var(--text-2); margin: 0; font-size: 0.93rem; }
+  .qa .a::before { content: "A — "; color: var(--muted); font-family: "IBM Plex Mono"; }
+
+  /* ---------- glossary ---------- */
+  dl.gloss { display: grid; grid-template-columns: max-content 1fr; gap: 0.55rem 1.5rem; }
+  dl.gloss dt { font-family: "IBM Plex Mono"; font-size: 0.85rem; color: var(--blue); white-space: nowrap; }
+  dl.gloss dd { margin: 0; color: var(--text-2); font-size: 0.9rem; }
+
+  footer.end {
+    border-top: 1px solid var(--border);
+    padding-top: 1.5rem;
+    color: var(--muted);
+    font-size: 0.82rem;
+    font-family: "IBM Plex Mono";
+  }
+</style>
+
+<div class="shell">
+  <nav class="rail">
+    <div class="brand">Trading Agent Playbook</div>
+    <ol>
+      <li><a href="#one-sentence">The one-sentence version</a></li>
+      <li><a href="#two-systems">Two separate systems</a></li>
+      <li><a href="#pipeline">The 15-minute cycle</a></li>
+      <li><a href="#files">Every file, what it does</a></li>
+      <li><a href="#why">Why it's built this way</a></li>
+      <li><a href="#run">How to run it</a></li>
+      <li><a href="#status">Current status</a></li>
+      <li><a href="#judges">Judge cheat sheet</a></li>
+      <li><a href="#glossary">Glossary</a></li>
+    </ol>
+  </nav>
+
+  <main>
+    <header class="hero">
+      <div class="eyebrow">Alpaca AI Trading Agents Hackathon — Options Alpha</div>
+      <h1>Trading Agent Playbook</h1>
+      <p class="sub">Everything the system is, why each piece exists, and how to run it — written so either of you can explain this to a judge without me in the room.</p>
+      <div class="status-row">
+        <span class="pill"><span class="dot blue"></span>Live provider: Groq</span>
+        <span class="pill"><span class="dot good"></span>Weekend soak-tested, 0 crashes</span>
+        <span class="pill"><span class="dot warn"></span>Not yet trading live market hours</span>
+        <span class="pill"><span class="dot good"></span>Dashboard deployed</span>
+      </div>
+    </header>
+
+    <section id="one-sentence">
+      <h2><span class="num">01</span>The one-sentence version</h2>
+      <p>You built a robot that watches SPY and QQQ options every 15 minutes, one AI model proposes a cautious defined-risk trade, and a separate rulebook written in plain Python — not AI, no persuading it — is the only thing allowed to let real (paper) money move.</p>
+      <p>Everything else in this document is detail on top of that one sentence.</p>
+    </section>
+
+    <section id="two-systems">
+      <h2><span class="num">02</span>Two separate systems — this is the part that's been confusing</h2>
+      <p>There is no single "the project is running" switch. There are <b>two independent things</b>, in two different places, that only talk to each other through GitHub. Neither one can see or control the other directly.</p>
+
+      <div class="split">
+        <div>
+          <h3><span class="sw" style="background:var(--blue)"></span>Local machine — the trader</h3>
+          <ul>
+            <li>Runs on <b>your computer</b>, inside a terminal you start yourself.</li>
+            <li>This is the part that actually <b>makes decisions and places trades</b>.</li>
+            <li>Talks to Alpaca, Groq, Featherless, Mistral, and your Claude Code CLI.</li>
+            <li>Writes one log entry every cycle, pushes it to GitHub.</li>
+            <li class="cant">Stops the instant you close the terminal or your PC sleeps. Nothing restarts it for you.</li>
+            <li>Started with one command: <code>python -m src.scheduler</code></li>
+          </ul>
+        </div>
+        <div>
+          <h3><span class="sw" style="background:var(--orange)"></span>Vercel — the window</h3>
+          <ul>
+            <li>Runs on <b>Vercel's servers</b>, always on, needs nothing from you day to day.</li>
+            <li>This is <b>only a website</b> — it cannot place, cancel, or affect any trade.</li>
+            <li>Reads the log file your local machine pushed to GitHub, shows it as charts and tables.</li>
+            <li>Redeploys itself automatically whenever you <code>git push</code>.</li>
+            <li class="cant">If the local trader isn't running, this page just shows old data — it has no idea the trader stopped.</li>
+            <li>Public dashboard: no login needed. <code>/admin</code>: password-gated, changes settings only.</li>
+          </ul>
+        </div>
+      </div>
+
+      <p style="margin-top:1.25rem">So: <b>"is it running?"</b> only has one real answer — is the local terminal with <code>src.scheduler</code> open right now? The website being live tells you nothing about that.</p>
+    </section>
+
+    <section id="pipeline">
+      <h2><span class="num">03</span>What happens every 15 minutes, in order</h2>
+      <div class="pipeline">
+        <div class="pstep">
+          <div class="n">1</div>
+          <div class="body"><b>Scheduler wakes up</b><span>Checks the market clock via Alpaca. If closed, or trading is paused via <code>/admin</code>, it stops here and waits for the next tick.</span></div>
+        </div>
+        <div class="pstep">
+          <div class="n">2</div>
+          <div class="body"><b>Pull live data</b><span>Current SPY/QQQ price, the full live option chain (strikes, IV, Greeks), and daily bars for the last ~2.4 years.</span></div>
+        </div>
+        <div class="pstep">
+          <div class="n">3</div>
+          <div class="body"><b>Compute the signals</b><span>IV Rank + VRP (is volatility expensive right now?) from the option chain. A calibrated P(Up) probability from a LightGBM model trained on the price history.</span></div>
+        </div>
+        <div class="pstep branch">
+          <div class="n">4</div>
+          <div class="body">
+            <b>Ask 4 AI models the same question</b>
+            <span>Same signals, same instructions, sent to all four in parallel.</span>
+            <div><span class="tag live">LIVE</span>Groq — its answer is the one that can actually execute.</div>
+            <div><span class="tag shadow">SHADOW</span>Claude Code CLI, Featherless, Mistral — logged for comparison, never touch the account.</div>
+          </div>
+        </div>
+        <div class="pstep">
+          <div class="n">5</div>
+          <div class="body"><b>Risk gate reviews the live decision</b><span>Pure Python, zero AI. Checks Kelly-criterion position size, max loss per trade, total open risk, daily drawdown, diversification. Approves with an exact contract count, or rejects with a reason.</span></div>
+        </div>
+        <div class="pstep">
+          <div class="n">6</div>
+          <div class="body"><b>Execute, if approved</b><span>Every leg of the spread submits as <i>one</i> atomic order — all fill together or none do. No partial, unbalanced positions possible.</span></div>
+        </div>
+        <div class="pstep">
+          <div class="n">7</div>
+          <div class="body"><b>Log and push</b><span>Signals, all 4 decisions, the risk verdict, and the fill result get written to one record, pushed to GitHub. The dashboard picks it up on its next page load.</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="files">
+      <h2><span class="num">04</span>Every file, what it does</h2>
+
+      <div class="group-label">Signals — turning raw market data into numbers worth reasoning about</div>
+      <div class="filegrid">
+        <div class="fcard"><span class="path">src/signals/iv_rank.py</span><p>Computes current implied volatility, compares it to realized volatility (VRP) and to a running log of past IV readings (IV Rank). Answers: is volatility expensive or cheap right now?</p></div>
+        <div class="fcard"><span class="path">src/signals/direction.py</span><p>Trains a LightGBM model on ~2.4 years of daily bars, outputs one calibrated number: probability price is up in 3 days. The only quantitative number the AI reasons with.</p></div>
+      </div>
+
+      <div class="group-label">Decision &amp; risk — the AI proposes, the code disposes</div>
+      <div class="filegrid">
+        <div class="fcard"><span class="path">src/decision_schema.py</span><p>The exact instructions every AI model receives — signals in, one of 4 strategies out, in strict JSON. Same prompt to all 4 models so the comparison is fair.</p></div>
+        <div class="fcard"><span class="path">src/model_adapter.py</span><p>One function that talks to Groq, Featherless, and Mistral (same API shape), plus a separate subprocess wrapper for Claude Code CLI. Every failure is caught and logged, never crashes the loop.</p></div>
+        <div class="fcard"><span class="path">src/risk_gate.py</span><p>The rulebook. No AI. Takes a proposed trade + account state, checks it against <code>config/risk_limits.yaml</code>, sizes it with Kelly criterion, approves or rejects. This is what makes "risk gates" a real, checkable claim instead of a slide.</p></div>
+        <div class="fcard"><span class="path">config/risk_limits.yaml</span><p>The actual numbers: max 2% loss per trade, 10% total open risk, 5% daily drawdown halt. Hand-edited only — never remotely adjustable, on purpose.</p></div>
+      </div>
+
+      <div class="group-label">Execution &amp; orchestration — tying it into one loop</div>
+      <div class="filegrid">
+        <div class="fcard"><span class="path">src/execution.py</span><p>Picks real option contracts off the live chain by delta (never a guessed strike), builds bull-call / bear-put / iron-condor spreads, submits every leg as one atomic order.</p></div>
+        <div class="fcard"><span class="path">src/orchestrator.py</span><p>The conductor. Runs signals → 4 decisions → risk gate → execution → log, for one underlying, one cycle. Everything above is a tool this file calls in order.</p></div>
+        <div class="fcard"><span class="path">src/scheduler.py</span><p>Runs the orchestrator every 15 minutes, only in market hours, with a 90-second timeout per cycle so one stuck network call can't freeze the whole process.</p></div>
+        <div class="fcard"><span class="path">src/audit_log.py</span><p>Writes one JSON record per cycle to <code>logs/audit_log.jsonl</code>, pushes that file to GitHub once per scheduler tick so the dashboard can see it.</p></div>
+        <div class="fcard"><span class="path">src/live_settings.py</span><p>Reads <code>config/live_settings.json</code> from GitHub each tick: which model is live, which tickers are active, whether trading is paused. This is what <code>/admin</code> controls.</p></div>
+      </div>
+
+      <div class="group-label">Dashboard — the public window (dashboard/)</div>
+      <div class="filegrid">
+        <div class="fcard"><span class="path">dashboard/src/app/page.tsx</span><p>The public, no-login page. Equity chart, live-vs-shadow comparison, full cycle table. Reads the GitHub-hosted log fresh on every visit.</p></div>
+        <div class="fcard"><span class="path">dashboard/src/lib/audit.ts</span><p>Fetches and parses the audit log from GitHub's raw file URL. The only place the dashboard's data actually comes from.</p></div>
+        <div class="fcard"><span class="path">dashboard/src/app/admin/page.tsx</span><p>Password-gated settings form: which model trades live, which tickers, pause/resume. Writes to GitHub via an API route — never touches risk limits.</p></div>
+        <div class="fcard"><span class="path">dashboard/src/proxy.ts</span><p>Checks a password before letting anyone reach <code>/admin</code> or its API route. The public page is untouched by this file and stays open.</p></div>
+      </div>
+    </section>
+
+    <section id="why">
+      <h2><span class="num">05</span>Why it's built this way</h2>
+
+      <div class="why">
+        <b>Why Groq is the only one that trades, and 3 others just watch</b>
+        <p>Running all 4 models every cycle — one live, three shadow — gives a continuous, honest comparison of a paid model (Claude) against free open models, without ever risking the account on an untested one. That comparison is itself part of the "Creativity" story for judges.</p>
+      </div>
+      <div class="why">
+        <b>Why the risk gate is plain Python, not AI</b>
+        <p>An LLM can be talked into anything with a convincing-sounding argument. A hard-coded rule can't be. Judges can read <code>risk_gate.py</code> directly and verify the limits are real, not claimed.</p>
+      </div>
+      <div class="why">
+        <b>Why every spread submits as one atomic order</b>
+        <p>Submitting legs one at a time risks a partial fill — you buy the protective leg but the sell leg fails, and you're holding an undefined-risk position by accident. One atomic order fills completely or not at all.</p>
+      </div>
+      <div class="why">
+        <b>Why only SPY and QQQ</b>
+        <p>Index ETFs don't report individual earnings — no earnings-crush risk, no earnings-calendar data source needed. That's two entire problems that disappear for free by picking the right underlyings.</p>
+      </div>
+      <div class="why">
+        <b>Why the dashboard reads from GitHub instead of your machine directly</b>
+        <p>Vercel's servers have no access to your laptop's filesystem. Pushing the log to GitHub after each cycle is the only way a public website can show "live" data from a trader running on a private computer.</p>
+      </div>
+      <div class="why">
+        <b>Why <code>/admin</code> can't touch risk limits</b>
+        <p>Even password-protected, a remotely-adjustable risk limit undermines the entire "the risk gate can't be talked into anything" story. Those numbers only change by hand-editing a file and pushing it.</p>
+      </div>
+    </section>
+
+    <section id="run">
+      <h2><span class="num">06</span>How to run it</h2>
+
+      <h3>Local — this is the part that actually trades</h3>
+      <div class="runblock">
+        <div class="head"><span>One manual test cycle — no real order placed</span></div>
+        <pre>cd C:\Projects\Trading
+.venv\Scripts\activate
+python -c "from dotenv import load_dotenv; load_dotenv(override=True); from src.orchestrator import run_cycle; print(run_cycle('SPY', dry_run=True))"</pre>
+        <p class="note">Fetches real live data, gets real AI decisions, evaluates the risk gate — but <code>dry_run=True</code> means nothing actually submits to Alpaca.</p>
+      </div>
+      <div class="runblock">
+        <div class="head"><span>The real thing — starts the autonomous 15-minute loop</span></div>
+        <pre>cd C:\Projects\Trading
+.venv\Scripts\activate
+python -m src.scheduler</pre>
+        <p class="note">Leave this terminal open. It checks market hours, runs every 15 minutes, submits real (paper) orders when the risk gate approves, and pushes results to the dashboard on its own. Closing the terminal stops everything.</p>
+      </div>
+
+      <h3>Vercel — nothing to run, it's already live</h3>
+      <div class="runblock">
+        <div class="head"><span>Public dashboard — always on</span></div>
+        <pre>https://alpaca-agent-dashboard-eta.vercel.app</pre>
+        <p class="note">No command to run. Redeploys itself automatically every time either of you pushes to <code>main</code> on GitHub.</p>
+      </div>
+      <div class="runblock">
+        <div class="head"><span>Admin settings — same URL, /admin path</span></div>
+        <pre>https://alpaca-agent-dashboard-eta.vercel.app/admin</pre>
+        <p class="note">Prompts for a username (blank) and password once <code>ADMIN_PASSWORD</code> is set as a Vercel environment variable — that's still a manual step in the Vercel dashboard, not done yet.</p>
+      </div>
+    </section>
+
+    <section id="status">
+      <h2><span class="num">07</span>Current status</h2>
+      <div class="overflow-wrap">
+      <table class="status">
+        <thead><tr><th>Piece</th><th>State</th><th>Detail</th></tr></thead>
+        <tbody>
+          <tr><td>Risk gate</td><td class="stateicon done">✓ done</td><td>10/10 synthetic scenarios pass — diversification cap, shrink-to-fit, drawdown halt</td></tr>
+          <tr><td>Direction classifier</td><td class="stateicon done">✓ done</td><td>Live-tested, calibrated, sane probabilities</td></tr>
+          <tr><td>Volatility signals</td><td class="stateicon done">✓ done</td><td>VRP live from day one, IV Rank now mature (15+ logged days)</td></tr>
+          <tr><td>4-model adapter</td><td class="stateicon done">✓ done</td><td>Groq + Featherless + Claude CLI live-tested; Mistral wired, key added</td></tr>
+          <tr><td>Atomic execution</td><td class="stateicon done">✓ done</td><td>Real order filled on dev account, all 4 legs together, confirmed</td></tr>
+          <tr><td>Audit log + push</td><td class="stateicon done">✓ done</td><td>Pushes to GitHub once per real (non-test) scheduler tick</td></tr>
+          <tr><td>Public dashboard</td><td class="stateicon done">✓ done</td><td>Deployed, verified rendering real data</td></tr>
+          <tr><td>Admin settings page</td><td class="stateicon pending">◐ pending</td><td>Built and deployed — needs <code>ADMIN_PASSWORD</code> + <code>GITHUB_TOKEN</code> added on Vercel</td></tr>
+          <tr><td>Sustained unattended run</td><td class="stateicon done">✓ done</td><td>Weekend soak test — 0 crashes after fixing a real hang (no request timeout in alpaca-py)</td></tr>
+          <tr><td>Live market-hours trading</td><td class="stateicon todo">○ not started</td><td>Markets closed all weekend — first real cycle happens Monday at open</td></tr>
+          <tr><td>Fresh competition account</td><td class="stateicon todo">○ not started</td><td>Create right before final run, per hackathon rules — currently on dev account <code>PA3HGXMPWZFU</code></td></tr>
+        </tbody>
+      </table>
+      </div>
+    </section>
+
+    <section id="judges">
+      <h2><span class="num">08</span>If a judge asks — quick answers</h2>
+      <div class="cheat">
+        <div class="qa"><div class="q">What makes this autonomous, not just an AI wrapper?</div><p class="a">The scheduler runs every 15 minutes with zero human input — reads live data, gets an AI decision, risk-checks it, executes if approved. Nobody clicks anything mid-cycle.</p></div>
+        <div class="qa"><div class="q">How do you know the risk limits are real, not just claimed?</div><p class="a">They're in a plain Python file, <code>risk_gate.py</code>, with no AI involved anywhere in it — you can read the exact rules and watch it reject a trade live in the audit log.</p></div>
+        <div class="qa"><div class="q">Why 4 AI models?</div><p class="a">Only Groq trades. The other 3 run the same decision every cycle purely for comparison — a real benchmark of a paid model against free open ones, using identical signals and instructions.</p></div>
+        <div class="qa"><div class="q">What stops a bad AI decision from blowing up the account?</div><p class="a">The risk gate sits between every AI decision and Alpaca. It sizes positions with the Kelly criterion off a calibrated ML probability — never the AI's own self-reported confidence — and can reject outright.</p></div>
+        <div class="qa"><div class="q">Is the dashboard live data or a screenshot?</div><p class="a">Live. It fetches the audit log fresh from GitHub on every page load — no caching, no static snapshot.</p></div>
+      </div>
+    </section>
+
+    <section id="glossary">
+      <h2><span class="num">09</span>Glossary</h2>
+      <dl class="gloss">
+        <dt>IV Rank</dt><dd>Where today's implied volatility sits versus its own recent history — high means options are "expensive" right now.</dd>
+        <dt>VRP</dt><dd>Volatility Risk Premium — implied volatility minus realized volatility. Positive means the market is pricing in more movement than has actually happened.</dd>
+        <dt>P(Up)</dt><dd>The LightGBM model's calibrated probability that price is higher in 3 days. A real number, not a vibe.</dd>
+        <dt>Kelly criterion</dt><dd>A formula for how much to bet given your edge and payoff — used here at quarter-strength to size positions conservatively.</dd>
+        <dt>Iron condor</dt><dd>A 4-leg options trade that profits if price stays in a range — used when volatility is high and direction is unclear.</dd>
+        <dt>Bull call / bear put spread</dt><dd>2-leg directional trades with a capped maximum loss, used when the model leans clearly up or down.</dd>
+        <dt>Shadow model</dt><dd>An AI whose decision gets logged every cycle but never executes — pure comparison data.</dd>
+        <dt>Atomic order</dt><dd>All legs of a multi-leg trade submit as one order — they fill together or not at all.</dd>
+      </dl>
+    </section>
+
+    <footer class="end">Alpaca AI Trading Agents Hackathon — Options Alpha · repo: github.com/Dinaltium/Trading</footer>
+  </main>
+</div>
