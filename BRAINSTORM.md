@@ -174,6 +174,20 @@ Since Item 7's own advice is "run the scheduler repeatedly to find remaining bug
 
 **Plan for Monday (explicit, bounded):** watch the first 1-2 real scheduled cycles fire on the dev account at market open, then move straight to Item 8 — create the fresh dedicated competition account and go live. Don't spend more of Monday itself on testing; that's real trading time now, and the weekend soak is what's meant to have covered the state-accumulation risk.
 
+## 13. /admin live-settings control (post-dashboard, user request)
+
+User asked whether `.env` could become toggleable settings (which model, which underlyings, pause/resume) instead of hand-edited. Correctly identified the security conflict before building: the public dashboard has no auth, so anything writable from it is a second execution path — flagged this and got explicit scoping before touching code.
+
+**Scoped in:** active live-model-provider (groq/featherless/mistral), underlyings list (added DIA/IWM as index-ETF options per the other chat's earnings-safe suggestion), global trading-paused switch.
+**Scoped out, permanently:** anything in `risk_limits.yaml` — max loss %, drawdown halt, Kelly fraction never become remotely toggleable, even behind auth. Remotely-adjustable risk limits would undermine the "risk gate is hard-coded, never tamperable" property the whole judged architecture rests on.
+
+- `config/live_settings.json` + `src/live_settings.py`: fetched fresh from GitHub every scheduler tick, fails safe to hard-coded defaults (groq/SPY+QQQ/not paused) on any fetch/parse error or disallowed value.
+- `orchestrator.py`/`scheduler.py`: `live_provider` is now a parameter, not hardcoded `"groq"`. Shadow set becomes "every HTTP provider except whichever is live" — Claude Code CLI always stays shadow-only (subprocess, bad fit for unattended scheduling).
+- `dashboard/src/app/admin/page.tsx` + `/api/live-settings/route.ts`: form UI, writes to `config/live_settings.json` via GitHub's Contents API using a server-only `GITHUB_TOKEN`.
+
+**Auth architecture pivot, mid-build:** originally planned a second, fully separate password-protected Vercel project (user's explicit choice). Hit a real tool constraint: `create_git_project` dedupes by repository — a second `create_git_project` call against the same repo just reused the existing public project instead of creating a new one, no matter the `projectName` passed. The file-based fallback (`deploy_to_vercel`) would have required pasting the entire app's source through my own context as literal tool-call parameters (confirmed painfully — one attempt with `package-lock.json` included blew past a 25k-token read cap, a trimmed retry still cost ~30k+ tokens for marginal benefit). Pivoted instead to a **path-scoped auth gate on the same public project**: `dashboard/src/proxy.ts` (Next.js 16 renamed `middleware.ts` to `proxy.ts` — confirmed via the framework's own bundled docs, not stale training data) checks `ADMIN_PASSWORD` via HTTP Basic Auth, `matcher` scoped to only `/admin/:path*` and `/api/live-settings/:path*` — the public `/` dashboard route is untouched by the proxy file entirely and stays open for judges. Fails closed (503) if `ADMIN_PASSWORD` isn't configured, rather than defaulting open. Verified live post-deploy: public `/` returns 200, `/admin` correctly returned 503 (password not yet set) rather than either an error or unintended access.
+- Still needs two env vars added manually on the Vercel project by the user (no tool available to set them remotely, and they shouldn't be pasted through chat regardless): `ADMIN_PASSWORD` and `GITHUB_TOKEN` (repo-scope PAT on Dinaltium/Trading).
+
 Next: Item 8 (go live — fresh dedicated competition account, then keep it running + pull real audit-log entries into the write-up as they come in).
 
 ## 12. Dashboard built (Next.js + shadcn/ui, deployed to Vercel)
