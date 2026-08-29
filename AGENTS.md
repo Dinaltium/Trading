@@ -179,11 +179,18 @@ Full reasoning + decisions behind this: see `BRAINSTORM.md`.
 
 ## 8. Repo Structure (target)
 
+**Dashboard (built):** Next.js + shadcn/ui, `dashboard/`, deployed to Vercel at
+**https://alpaca-agent-dashboard-eta.vercel.app** (auto-deploys on push to `main`, root dir `dashboard/`).
+Read-only — reads `logs/audit_log.jsonl` fresh from GitHub raw on every request (the scheduler
+auto-pushes that one file after each real tick; see `src/audit_log.py`'s `push_audit_log()`).
+This is the "Application URL" for hackathon submission. Full detail: `BRAINSTORM.md` §12.
+
 ```
 Trading/
 ├── AGENTS.md              # this file
 ├── README.md               # (superseded by this file — keep or merge, see note)
 ├── LINKS.md                 # raw reference links
+├── dashboard/               # Next.js + shadcn/ui read-only dashboard, deployed to Vercel
 ├── src/
 │   ├── scheduler.py         # market-hours loop, ~15 min cadence
 │   ├── agent.py              # Claude reasoning loop, MCP tool calls
