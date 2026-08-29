@@ -1,0 +1,52 @@
+name: Trading cycle
+
+# Runs the trading loop on GitHub's own servers, not anyone's laptop. This is what makes
+# the system "always on" — judges can watch it execute live in the Actions tab below,
+# with full printed output, whether or not anyone's computer is open.
+#
+# Every 15 minutes, weekdays, spanning US market hours with buffer either side (13:00-21:00
+# UTC covers 9:30am-4pm ET across both EDT and EST). The script itself checks Alpaca's own
+# market clock and skips cleanly outside actual trading hours - this schedule is just an
+# outer bound so we're not burning CI minutes at 3am.
+on:
+  schedule:
+    - cron: "*/15 13-20 * * 1-5"
+  workflow_dispatch: {}  # lets you trigger one cycle manually from the Actions tab, anytime
+
+permissions:
+  contents: write  # needed so the run can commit+push logs/audit_log.jsonl and config/live_settings.json reads
+
+jobs:
+  run-cycle:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Configure git identity for the audit-log push
+        run: |
+          git config user.name "trading-cycle-bot"
+          git config user.email "actions@users.noreply.github.com"
+
+      - name: Run one trading cycle
+        env:
+          ALPACA_API_KEY: ${{ secrets.ALPACA_API_KEY }}
+          ALPACA_SECRET_KEY: ${{ secrets.ALPACA_SECRET_KEY }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          FEATHER_API_KEY: ${{ secrets.FEATHER_API_KEY }}
+          MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
+        # No --live flag: this runs dry_run=True (real signals, real AI decisions, real
+        # risk-gate evaluation - nothing skipped) but does not submit real paper orders.
+        # Add --live once the fresh competition account is ready and you deliberately
+        # want this workflow to place real trades.
+        run: python -m src.scheduler --once

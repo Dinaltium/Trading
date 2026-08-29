@@ -89,4 +89,13 @@ if __name__ == "__main__":
     import sys
 
     test_mode = "--test-mode" in sys.argv
-    start(dry_run=True, test_mode=test_mode)
+    dry_run = "--live" not in sys.argv  # default safe: dry_run=True unless --live is explicit
+
+    if "--once" in sys.argv:
+        # single-shot mode: run exactly one tick and exit. This is what GitHub Actions
+        # calls on its own 15-min cron — the recurrence lives in the workflow schedule,
+        # not in a long-running process, so this doesn't need your laptop open at all.
+        run_all_cycles(dry_run=dry_run, test_mode=test_mode)
+    else:
+        # long-running local mode (BlockingScheduler) — still usable for local dev/testing.
+        start(dry_run=dry_run, test_mode=test_mode)
