@@ -13,12 +13,20 @@ export type ModelDecision = {
   approved_for_execution: boolean;
 };
 
-export type LiveDecision = ModelDecision & { provider: "groq" };
+// Any of the four can now be the live one (set in /admin), so provider is no longer
+// pinned to groq. See ALLOWED_LIVE_PROVIDERS in src/live_settings.py.
+export type Provider = "groq" | "featherless" | "mistral" | "claude_code_cli";
+
+export type LiveDecision = ModelDecision & { provider: Provider };
 
 export type ShadowResult = {
+  // ok means "produced a usable decision", not "the call connected" — see _shadow_entry
+  // in src/orchestrator.py. A transport success with unreadable output is ok: false.
   ok: boolean;
   decision: ModelDecision | null;
   error: string | null;
+  warnings?: string[] | null;   // off-spec but recoverable, e.g. a self-contradictory field
+  raw_output?: string | null;   // the unparseable text, kept only when parsing failed
 };
 
 export type RiskGateVerdict = {
@@ -33,7 +41,10 @@ export type CycleSignals = {
   classifier_p_up: number;
   iv_rank: number | null;
   iv_percentile: number | null;
-  iv_history_days: number;
+  // Renamed from iv_history_days once it was clear the number counts cycles, not days.
+  // Both are optional so the dashboard still parses records written before the rename.
+  iv_history_samples?: number;
+  iv_history_days?: number;
   vrp: number;
   market_regime: string;
   days_to_earnings: number | null;
@@ -54,11 +65,12 @@ export type CycleRecord = {
   account_equity: number | null;
   signals: CycleSignals;
   live_decision: LiveDecision | null;
-  shadow_decisions: {
-    featherless?: ShadowResult;
-    mistral?: ShadowResult;
-    claude_code_cli?: ShadowResult;
-  };
+  // Set when the live provider produced no usable decision, so a failed call is
+  // distinguishable from a genuine "cash" pick — both leave live_decision null.
+  live_decision_error?: string | null;
+  live_decision_warnings?: string[] | null;
+  // Whichever provider is live is absent here; the other three appear as shadows.
+  shadow_decisions: Partial<Record<Provider, ShadowResult>>;
   risk_gate_verdict: RiskGateVerdict | null;
   fill_result: FillResult;
 };

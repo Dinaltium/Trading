@@ -38,6 +38,10 @@ def write_cycle_record(
     dry_run: bool,
     account_equity: Optional[float] = None,
     live_provider: str = "groq",
+    live_decision_error: Optional[str] = None,
+    live_decision_warnings: Optional[list] = None,
+    live_rulebook: Optional[dict] = None,
+    guards: Optional[dict] = None,
     log_path: Path = LOG_PATH,
 ) -> dict:
     log_path.parent.mkdir(exist_ok=True)
@@ -48,6 +52,16 @@ def write_cycle_record(
         "account_equity": account_equity,
         "signals": _to_jsonable(signals),
         "live_decision": {"provider": live_provider, **_to_jsonable(live_decision)} if live_decision else None,
+        # Set only when the live provider produced no usable decision. Distinguishes a
+        # failed/unparseable call from a genuine "cash" pick, which otherwise look
+        # identical downstream (both leave live_decision falsy and skip the risk gate).
+        "live_decision_error": live_decision_error,
+        "live_decision_warnings": live_decision_warnings or None,
+        # Whether the live model agreed with the deterministic rulebook, abstained from
+        # it, or went off-book. The model-comparison writeup is built from this field.
+        "live_rulebook": live_rulebook,
+        # Integrity-guard verdicts, one per TradeTrap component. See src/guards.py.
+        "guards": _to_jsonable(guards) if guards else None,
         "shadow_decisions": _to_jsonable(shadow_decisions),
         "risk_gate_verdict": _to_jsonable(risk_gate_verdict),
         "fill_result": _to_jsonable(fill_result),
@@ -66,7 +80,11 @@ def push_audit_log(commit_message: Optional[str] = None) -> bool:
     a git/network hiccup must not take down the trading loop."""
     message = commit_message or f"audit log: cycle at {datetime.now(timezone.utc).isoformat()}"
     try:
-        subprocess.run(["git", "add", "logs/audit_log.jsonl"], cwd=REPO_ROOT, check=True, capture_output=True, text=True)
+        # The whole of logs/, not just the audit log — .gitignore already narrows this to
+        # the four things that must survive: the audit log, the IV history window, agent
+        # state, and the archived evidence. The next cycle runs on a fresh CI runner holding
+        # only what is committed here, so unpushed state is state the agent will not have.
+        subprocess.run(["git", "add", "--", "logs/"], cwd=REPO_ROOT, check=True, capture_output=True, text=True)
         commit = subprocess.run(["git", "commit", "-m", message], cwd=REPO_ROOT, capture_output=True, text=True)
         if commit.returncode != 0 and "nothing to commit" not in commit.stdout:
             print(f"[audit_log push] commit failed: {commit.stderr.strip()}")

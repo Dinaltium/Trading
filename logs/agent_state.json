@@ -1,0 +1,9 @@
+{
+  "consecutive_execution_failures": 0,
+  "breaker_tripped": false,
+  "breaker_failures_at_trip": 0,
+  "last_execution_error": null,
+  "last_cycle_at": "2026-08-30T11:44:22.237409+00:00",
+  "last_submission_at": null,
+  "cycles_recorded": 2
+}

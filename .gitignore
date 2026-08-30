@@ -18,10 +18,28 @@ chatGPTResult.md
 notebookLLMResult.md
 notebookLLMResultPipeline.md
 
-# generated at runtime, not build-relevant — EXCEPT audit_log.jsonl, which is pushed
-# deliberately so the deployed dashboard can read it (see dashboard/ + src/audit_log.py)
+# Generated at runtime. Most of logs/ is local noise, but four things MUST be tracked:
+# every GitHub Actions cycle runs on a brand-new runner that checks this repo out fresh, so
+# anything not committed does not exist as far as the deployed agent is concerned.
+#   audit_log.jsonl      - read by the deployed dashboard (see dashboard/, src/audit_log.py)
+#   iv_history_*.csv     - the window iv_rank is measured against. Untracked, every CI cycle
+#                          started with zero history, iv_rank came back None, and the
+#                          rulebook therefore mandated cash on every single cycle.
+#   agent_state.json     - circuit breaker + heartbeat. Untracked, the breaker resets every
+#                          15 minutes and can never trip (see src/agent_state.py).
+#   archive/             - evidence: the pre-fix audit log containing the observed model
+#                          faithfulness failures, and the contaminated IV history.
 logs/*
 !logs/audit_log.jsonl
+!logs/iv_history_*.csv
+!logs/agent_state.json
+!logs/archive/
+!logs/archive/**
+
+# Third-party research PDFs. Cited in README and in the source that implements them, but
+# not redistributed here — they are other people's copyrighted work and add ~7MB to a repo
+# judges will clone.
+*.pdf
 
 # Next.js dashboard
 dashboard/node_modules/

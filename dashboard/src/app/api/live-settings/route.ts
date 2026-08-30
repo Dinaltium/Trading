@@ -14,7 +14,9 @@ const REPO = "Trading";
 const PATH = "config/live_settings.json";
 const BRANCH = "main";
 
-const ALLOWED_PROVIDERS = ["groq", "featherless", "mistral"];
+// Must stay in sync with ALLOWED_LIVE_PROVIDERS in src/live_settings.py, which
+// re-validates independently — the scheduler never trusts this file blindly.
+const ALLOWED_PROVIDERS = ["groq", "featherless", "mistral", "claude_code_cli"];
 const ALLOWED_UNDERLYINGS = ["SPY", "QQQ", "DIA", "IWM"];
 
 type LiveSettings = {

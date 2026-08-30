@@ -19,4 +19,14 @@ underlyings:
   - QQQ
 
 market_regime_gate:
-  vix_high_tercile_halt: true       # per RegimeFolio-style gate: no new premium-selling trades in high-vol tercile
+  # ENFORCED in risk_gate.evaluate(). Until 2026-08-30 this block was dead config: nothing
+  # read it, and the only regime halt in the system was a sentence in the LLM prompt asking
+  # the model nicely. That made it the one risk rule with no deterministic backing.
+  #
+  # Scope is deliberately narrow. The RegimeFolio-style finding is about SELLING premium in
+  # a high-volatility tercile, so the halt applies to iron_condor (net credit, short vol)
+  # and not to the debit spreads, which are long premium and unaffected by that concern.
+  # The previous blanket reading vetoed every strategy and produced 47 refusals out of 47
+  # high-IV cycles - including 19 textbook condor setups.
+  premium_selling_halt_iv_rank: 90.0   # no NEW iron_condor at or above this IV rank
+  enforce_rulebook: true               # reject any strategy the deterministic rulebook does not mandate

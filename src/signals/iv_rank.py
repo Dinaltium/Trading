@@ -11,6 +11,15 @@ Two signals, deliberately decoupled:
     each day of the hackathon. Every call to log_iv_snapshot() appends one row;
     iv_rank_from_log() reports its own sample size so callers (and the LLM prompt)
     can weight it honestly instead of pretending a 3-day lookback is a 52-week one.
+
+Two properties this file has to get right, both learned the hard way (see the audit-log
+forensics in BRAINSTORM.md):
+  - The sample count is a count of CYCLES, not days. At a 15-minute cadence 68 rows is
+    ~36 hours, not 68 days. It is named and reported as samples so nothing downstream
+    can mistake it for a calendar lookback.
+  - The current observation must NOT be inside the window it is ranked against. Logging
+    first and ranking afterwards made every new high score exactly 100.0 by construction,
+    which pinned iv_rank at its ceiling and jammed the regime flag permanently on.
 """
 
 import csv
@@ -39,7 +48,8 @@ class VolSignals:
     vrp: float                        # current_atm_iv - realized_vol_20d, in vol points
     iv_rank: Optional[float]          # None if not enough logged history yet
     iv_percentile: Optional[float]
-    iv_history_days: int              # sample size backing iv_rank/iv_percentile
+    iv_history_samples: int           # number of logged CYCLES backing iv_rank/iv_percentile.
+                                      # Not days - at a 15-min cadence ~26 samples is one trading day.
 
 
 def get_current_atm_iv(opt_client: OptionHistoricalDataClient, underlying: str, current_price: float) -> Optional[float]:
@@ -91,8 +101,12 @@ def log_iv_snapshot(underlying: str, iv: float, log_path: Optional[Path] = None)
 
 
 def iv_rank_from_log(underlying: str, current_iv: float, log_path: Optional[Path] = None) -> tuple[Optional[float], Optional[float], int]:
-    """Returns (iv_rank, iv_percentile, sample_size) from whatever history has accumulated so far.
-    Returns (None, None, n) if fewer than 5 data points — too thin to mean anything."""
+    """Returns (iv_rank, iv_percentile, sample_size) ranking current_iv against the PRIOR
+    history on disk. Call this before log_iv_snapshot(), never after: if the current
+    observation is already in the window, any new high scores exactly 100.0 and any new
+    low exactly 0.0, regardless of what the market actually did.
+
+    Returns (None, None, n) if fewer than 5 prior data points - too thin to mean anything."""
     log_path = log_path or LOG_DIR / f"iv_history_{underlying}.csv"
     if not log_path.exists():
         return None, None, 0
@@ -105,7 +119,12 @@ def iv_rank_from_log(underlying: str, current_iv: float, log_path: Optional[Path
         return None, None, n
 
     lo, hi = min(history), max(history)
-    iv_rank = ((current_iv - lo) / (hi - lo) * 100.0) if hi > lo else 50.0
+    if hi > lo:
+        # Clamped because current_iv is deliberately outside the window: a genuine new
+        # extreme would otherwise compute above 100 or below 0.
+        iv_rank = min(100.0, max(0.0, (current_iv - lo) / (hi - lo) * 100.0))
+    else:
+        iv_rank = 50.0
     iv_percentile = (sum(1 for h in history if h < current_iv) / n) * 100.0
     return round(iv_rank, 2), round(iv_percentile, 2), n
 
@@ -115,7 +134,13 @@ def compute_vol_signals(
     stock_client: StockHistoricalDataClient,
     underlying: str,
     current_price: float,
+    record_history: bool = False,
 ) -> Optional[VolSignals]:
+    """record_history must be True ONLY on real market-hours cycles. It defaults to False
+    so ad-hoc runs, dry runs and weekend soak tests can exercise the whole pipeline without
+    writing into the IV history that iv_rank is measured against. A single stale
+    closed-market quote appended here becomes the window's max and skews every subsequent
+    rank for the rest of the competition."""
     current_iv = get_current_atm_iv(opt_client, underlying, current_price)
     if current_iv is None:
         return None
@@ -124,8 +149,10 @@ def compute_vol_signals(
     if realized_vol is None:
         return None
 
-    log_iv_snapshot(underlying, current_iv)
+    # Rank first, against prior history only - then append. Order matters, see iv_rank_from_log.
     iv_rank, iv_pct, n = iv_rank_from_log(underlying, current_iv)
+    if record_history:
+        log_iv_snapshot(underlying, current_iv)
 
     return VolSignals(
         underlying=underlying,
@@ -134,7 +161,7 @@ def compute_vol_signals(
         vrp=round(current_iv - realized_vol, 4),
         iv_rank=iv_rank,
         iv_percentile=iv_pct,
-        iv_history_days=n,
+        iv_history_samples=n,
     )
 
 

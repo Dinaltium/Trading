@@ -9,6 +9,10 @@ Kelly fraction). Those stay git-committed, hand-edited only — remotely togglin
 risk limits, even behind a password, would undermine the "risk gate is hard-coded,
 never tamperable" property the whole architecture is built on. See BRAINSTORM.md.
 
+All four models can now be selected as the live one. Whichever is chosen executes;
+the other three automatically fall to shadow. See ALLOWED_LIVE_PROVIDERS for the
+claude_code_cli caveat.
+
 Fails safe: any fetch/parse error, or a provider not in ALLOWED_LIVE_PROVIDERS,
 falls back to the hard-coded default (Groq live, SPY+QQQ, not paused) rather than
 either crashing the scheduler or silently trusting malformed remote input.
@@ -21,7 +25,11 @@ from typing import Optional
 import requests
 
 RAW_URL = "https://raw.githubusercontent.com/Dinaltium/Trading/main/config/live_settings.json"
-ALLOWED_LIVE_PROVIDERS = {"groq", "featherless", "mistral"}  # claude_code_cli stays shadow-only, see module docstring
+ALLOWED_LIVE_PROVIDERS = {"groq", "featherless", "mistral", "claude_code_cli"}
+# claude_code_cli is selectable but carries a real caveat: it shells out to the `claude`
+# binary, which exists on a developer laptop and NOT on the GitHub Actions runner. Selected
+# there, every cycle returns "'claude' CLI not found on PATH", no decision is produced and
+# nothing trades. The /admin UI says so at the point of choosing.
 FETCH_TIMEOUT_SECONDS = 10
 
 

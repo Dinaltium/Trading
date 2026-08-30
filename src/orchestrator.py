@@ -17,18 +17,36 @@ from alpaca.data.historical.stock import StockHistoricalDataClient
 from alpaca.data.requests import StockBarsRequest
 from alpaca.data.timeframe import TimeFrame
 from alpaca.trading.client import TradingClient
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
+from src.agent_state import AgentState
 from src.audit_log import write_cycle_record
-from src.decision_schema import SYSTEM_PROMPT, build_user_payload
-from src.execution import build_spread, submit_spread_order
+from src.alpaca_cli import LiveEndpointError, get_broker_state, submit_spread_via_cli
+from src.decision_schema import (
+    SYSTEM_PROMPT,
+    build_user_payload,
+    decision_matches_rulebook,
+    parse_decision,
+    rulebook_strategy,
+)
+from src.execution import build_spread
+from src.guards import (
+    check_faithfulness,
+    cross_model_agreement,
+    reconcile_positions,
+    validate_signals,
+)
 from src.model_adapter import call_claude_code_cli, call_openai_compatible
 from src.risk_gate import AccountState, TradeProposal, evaluate as evaluate_risk
+from src.signals.azte import compute_trigger
 from src.signals.direction import train_and_predict
 from src.signals.iv_rank import compute_vol_signals
 
-ALL_HTTP_PROVIDERS = ["groq", "featherless", "mistral"]  # + claude_code_cli, called separately (subprocess, not HTTP)
-                                                            # which one is "live" is configurable — see src/live_settings.py
+ALL_HTTP_PROVIDERS = ["groq", "featherless", "mistral"]  # spoken to over HTTP
+CLAUDE_CLI_PROVIDER = "claude_code_cli"                  # spoken to via subprocess, not HTTP
+ALL_PROVIDERS = ALL_HTTP_PROVIDERS + [CLAUDE_CLI_PROVIDER]
+# Any of the four may be the live one — configured in /admin, see src/live_settings.py.
+# Whichever is live executes; the remaining three run as shadows in the same cycle.
 
 
 def get_account_state(trading_client: TradingClient) -> AccountState:
@@ -54,25 +72,79 @@ def get_current_price(stock_client: StockHistoricalDataClient, underlying: str) 
     return float(bars["close"].iloc[-1])
 
 
-def _parse_decision(content: Optional[str]) -> Optional[dict]:
-    if not content:
-        return None
-    try:
-        return json.loads(content)
-    except json.JSONDecodeError:
-        return None
+def call_provider(provider: str, payload: dict):
+    """One call site for all four models. claude_code_cli is a subprocess; the rest are HTTP.
+    Keeping the dispatch here means live vs shadow is decided purely by configured name."""
+    if provider == CLAUDE_CLI_PROVIDER:
+        return call_claude_code_cli(SYSTEM_PROMPT, payload)
+    return call_openai_compatible(provider, SYSTEM_PROMPT, payload)
 
 
-def run_cycle(underlying: str, dry_run: bool = True, live_provider: str = "groq") -> dict:
+def _score_against_rulebook(decision: Optional[dict], iv_rank, p_up) -> Optional[dict]:
+    """Every model's pick, live and shadow alike, scored against the same deterministic
+    rulebook. This is the benchmark payload: across the competition it answers "which model
+    follows the rules, and which one drifts" with counted evidence instead of impressions.
+
+    Recorded for shadows too, even though a shadow decision can never reach the gate."""
+    if not decision:
+        return None
+    selected = decision.get("selected_strategy")
+    permitted, detail = decision_matches_rulebook(selected, iv_rank, p_up)
+    mandated, _ = rulebook_strategy(iv_rank, p_up)
+    return {
+        "selected": selected,
+        "rulebook_mandated": mandated,
+        "compliant": permitted,
+        "abstained": selected == "cash" and mandated != "cash",
+        "detail": detail,
+    }
+
+
+def _shadow_entry(result) -> dict:
+    """One shadow model's audit-log entry. `ok` means "this provider produced a usable
+    decision", not merely "the HTTP/subprocess call returned 0" — the old version marked
+    a call ok whenever the transport succeeded, so unparseable output was logged as a
+    success that decided nothing, which is indistinguishable in the benchmark from a
+    model that deliberately chose cash."""
+    if not result.ok:
+        return {"ok": False, "decision": None, "error": result.error}
+
+    parsed = parse_decision(result.content)
+    return {
+        "ok": parsed.decision is not None,
+        "decision": parsed.decision,
+        "error": parsed.error,
+        "warnings": parsed.warnings or None,
+        "raw_output": parsed.raw,  # populated only when parsing failed, so failures are diagnosable
+    }
+
+
+def run_cycle(
+    underlying: str,
+    dry_run: bool = True,
+    live_provider: str = "groq",
+    record_history: bool = False,
+) -> dict:
+    """record_history defaults False so any ad-hoc `python -m src.orchestrator` run exercises
+    the full pipeline without appending to the IV history that iv_rank is measured against.
+    Only the scheduler sets it True, and only on a real market-hours cycle."""
     key, sec = os.getenv("ALPACA_API_KEY"), os.getenv("ALPACA_SECRET_KEY")
     opt_client = OptionHistoricalDataClient(key, sec)
     stock_client = StockHistoricalDataClient(key, sec)
     trading_client = TradingClient(key, sec, paper=True)  # literal True — never read from config, see execution notes
 
+    # Cross-cycle state, loaded from disk. On GitHub Actions every cycle is a new process,
+    # so anything held only in memory is lost between cycles — see src/agent_state.py.
+    state = AgentState.load()
+    cycle_started_at = datetime.now(timezone.utc)
+    heartbeat = state.heartbeat(cycle_started_at)
+
+    breaker = state.breaker_tripped
+
     account_state = get_account_state(trading_client)  # fetched once per cycle, always logged —
                                                           # this is the equity-over-time series the dashboard charts
     price = get_current_price(stock_client, underlying)
-    vol = compute_vol_signals(opt_client, stock_client, underlying, price)
+    vol = compute_vol_signals(opt_client, stock_client, underlying, price, record_history=record_history)
     direction = train_and_predict(stock_client, underlying)
 
     if vol is None or direction is None:
@@ -84,33 +156,84 @@ def run_cycle(underlying: str, dry_run: bool = True, live_provider: str = "groq"
         "classifier_p_up": direction.p_up,
         "iv_rank": vol.iv_rank,
         "iv_percentile": vol.iv_percentile,
-        "iv_history_days": vol.iv_history_days,
+        "iv_history_samples": vol.iv_history_samples,  # cycles, not days - see signals/iv_rank.py
         "vrp": vol.vrp,
         "market_regime": "HIGH_VOLATILITY" if (vol.iv_rank or 0) > 80 else "NORMAL_VOLATILITY",
         "days_to_earnings": None,  # N/A for SPY/QQQ index ETFs, see blueprint item 3
+        # Temporal provenance, per Look-Ahead-Bench (arXiv:2601.13770). The benchmark's
+        # finding is that an LLM scored on historical data may be reciting memorised outcomes
+        # rather than predicting, which inflates backtested alpha that then evaporates live.
+        # This agent is immune by construction — it decides only on data timestamped at or
+        # before the decision instant and is scored on outcomes that have not happened yet —
+        # but "immune by construction" is a claim, and this field is the evidence for it.
+        "decision_time": cycle_started_at.isoformat(),
+        "data_cutoff": cycle_started_at.isoformat(),
     }
+    # TradeTrap guard 1 of 4 — market intelligence. A malformed signal vector never reaches
+    # a model: asked to reason about an impossible number, a model invents a justification
+    # for it rather than objecting.
+    signal_guard = validate_signals(signals)
+    if not signal_guard.passed:
+        return write_cycle_record(
+            underlying=underlying,
+            signals=signals,
+            live_decision=None,
+            shadow_decisions={},
+            risk_gate_verdict={"approved": False, "reason": "signal validation failed; no model consulted"},
+            fill_result=None,
+            dry_run=dry_run,
+            account_equity=account_state.equity,
+            live_provider=live_provider,
+            guards={"signals": signal_guard.as_record()},
+        )
+
+    # AGENTICAITA's selective-activation trigger. Computed and logged every cycle; not
+    # enforced — see src/signals/azte.py for why suppressing cycles is the wrong trade
+    # with 27 market hours left.
+    trigger = compute_trigger(stock_client, underlying)
+
     payload = build_user_payload(signals)
 
     # --- live decision (whichever provider is configured active — default groq) ---
-    live_result = call_openai_compatible(live_provider, SYSTEM_PROMPT, payload)
-    live_decision = _parse_decision(live_result.content) if live_result.ok else None
+    # call_provider() hides the HTTP-vs-subprocess split so the live/shadow split is purely
+    # a matter of which name is configured, not which transport a model happens to use.
+    live_result = call_provider(live_provider, payload)
+    live_parsed = parse_decision(live_result.content) if live_result.ok else None
+    live_decision = live_parsed.decision if live_parsed else None
+    # A live provider that fails to return a valid decision must not be silently treated as
+    # "chose cash" — record why, so an outage or a schema regression is visible in the log.
+    live_decision_error = (
+        live_result.error if not live_result.ok else live_parsed.error
+    )
+    live_decision_warnings = live_parsed.warnings if live_parsed else []
 
-    # --- shadow decisions, never executed — every HTTP provider except whichever is live ---
+    # --- shadow decisions, never executed — every provider except whichever is live ---
     shadow_decisions = {}
-    for provider in ALL_HTTP_PROVIDERS:
+    for provider in ALL_PROVIDERS:
         if provider == live_provider:
             continue
-        result = call_openai_compatible(provider, SYSTEM_PROMPT, payload)
-        shadow_decisions[provider] = {"ok": result.ok, "decision": _parse_decision(result.content), "error": result.error}
-
-    claude_result = call_claude_code_cli(SYSTEM_PROMPT, payload)
-    shadow_decisions["claude_code_cli"] = {"ok": claude_result.ok, "decision": _parse_decision(claude_result.content), "error": claude_result.error}
+        entry = _shadow_entry(call_provider(provider, payload))
+        entry["rulebook"] = _score_against_rulebook(entry["decision"], vol.iv_rank, direction.p_up)
+        shadow_decisions[provider] = entry
 
     # --- risk gate + execution, live decision only ---
     risk_verdict = None
     fill_result = None
 
-    if live_decision and live_decision.get("selected_strategy") not in (None, "cash"):
+    # TradeTrap guard 2 of 4 — strategy formulation. A model that quotes a signal value it
+    # was never given has fabricated its own input; its conclusion is unsupported even when
+    # the strategy happens to be the one the rulebook mandates.
+    faithfulness = check_faithfulness((live_decision or {}).get("reasoning"), signals)
+
+    # TradeTrap guard 3 of 4 — cross-validation across the four independent models.
+    agreement = cross_model_agreement((live_decision or {}).get("selected_strategy"), shadow_decisions)
+
+    if live_decision and not faithfulness.passed:
+        risk_verdict = {
+            "approved": False,
+            "reason": "faithfulness check failed: " + "; ".join(faithfulness.failures),
+        }
+    elif live_decision and live_decision.get("selected_strategy") not in (None, "cash"):
         spread = build_spread(opt_client, underlying, live_decision["selected_strategy"])
         if spread is None:
             risk_verdict = {"approved": False, "reason": "could not build spread from live chain"}
@@ -122,15 +245,58 @@ def run_cycle(underlying: str, dry_run: bool = True, live_provider: str = "groq"
                 max_loss_per_contract=spread.max_loss_per_contract,
                 classifier_win_probability=direction.p_up,
                 llm_confidence_score=live_decision.get("confidence_score", 0.0),
+                # Raw signals, so the gate re-derives the mandated strategy itself rather
+                # than trusting the strategy name the model handed it.
+                iv_rank=vol.iv_rank,
+                classifier_p_up=direction.p_up,
             )
             gate_result = evaluate_risk(proposal, account_state)
             risk_verdict = {"approved": gate_result.approved, "reason": gate_result.reason, "contracts": gate_result.contracts}
 
-            if gate_result.approved and not dry_run:
-                order = submit_spread_order(trading_client, spread, gate_result.contracts)
-                fill_result = {"order_id": str(order.id), "status": str(order.status)}
+            if gate_result.approved and breaker:
+                # Persisted circuit breaker. Latched by a previous PROCESS, not this one —
+                # which is the whole reason it lives on disk.
+                fill_result = {
+                    "submitted": False,
+                    "blocked_by": "execution_circuit_breaker",
+                    "failures_at_trip": state.breaker_failures_at_trip,
+                    "last_error": state.last_execution_error,
+                }
+            elif gate_result.approved and not dry_run:
+                # Submission goes through the Alpaca CLI, which re-verifies the paper
+                # endpoint out-of-process before the order is built. See src/alpaca_cli.py.
+                try:
+                    # TradeTrap guard 4 of 4 — portfolio & ledger. Checked here, at the last
+                    # possible moment, against a second independent read of broker state.
+                    # Trading on a stale position map is how a diversification cap silently
+                    # stops capping.
+                    recon = reconcile_positions(
+                        account_state.open_underlyings, account_state.equity, get_broker_state()
+                    )
+                    if not recon.passed:
+                        raise LiveEndpointError("reconciliation failed: " + "; ".join(recon.failures))
+                    fill_result = submit_spread_via_cli(spread, gate_result.contracts)
+                    if fill_result.get("submitted"):
+                        state.record_execution_success(when=datetime.now(timezone.utc).isoformat())
+                    else:
+                        state.record_execution_failure(str(fill_result.get("error")))
+                except LiveEndpointError as e:
+                    # Never downgraded to a warning: an unverified endpoint means no order.
+                    state.record_execution_failure(str(e))
+                    fill_result = {"submitted": False, "via": "alpaca_cli", "error": f"endpoint check failed: {e}"}
             elif gate_result.approved and dry_run:
                 fill_result = {"dry_run": True, "would_submit": spread.strategy, "contracts": gate_result.contracts}
+
+    live_rulebook = _score_against_rulebook(live_decision, vol.iv_rank, direction.p_up)
+
+    guards = {
+        "signals": signal_guard.as_record(),
+        "faithfulness": faithfulness.as_record(),
+        "cross_model_agreement": agreement,
+        "heartbeat": heartbeat,
+        "azte_trigger": trigger.as_record(),
+        "agent_state": state.as_record(),
+    }
 
     record = write_cycle_record(
         underlying=underlying,
@@ -142,7 +308,14 @@ def run_cycle(underlying: str, dry_run: bool = True, live_provider: str = "groq"
         dry_run=dry_run,
         account_equity=account_state.equity,
         live_provider=live_provider,
+        live_decision_error=live_decision_error,
+        live_decision_warnings=live_decision_warnings,
+        live_rulebook=live_rulebook,
+        guards=guards,
     )
+
+    state.note_cycle(cycle_started_at)
+    state.save()
     return record
 
 

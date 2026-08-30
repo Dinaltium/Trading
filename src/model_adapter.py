@@ -21,7 +21,9 @@ from openai import OpenAI
 PROVIDERS = {
     "groq": ("GROQ_API_KEY", "https://api.groq.com/openai/v1", "openai/gpt-oss-120b"),
     "featherless": ("FEATHER_API_KEY", "https://api.featherless.ai/v1", "TheDrummer/Anubis-70B-v1"),
-    "mistral": ("MISTRAL_API_KEY", "https://api.mistral.ai/v1", "mistral-large-latest"),
+    # mistral-large-latest is gated behind a paid tier and returns 403 tier_not_allowed on
+    # the free key; medium is the strongest model this account can actually call.
+    "mistral": ("MISTRAL_API_KEY", "https://api.mistral.ai/v1", "mistral-medium-latest"),
 }
 
 
@@ -98,6 +100,8 @@ def call_claude_code_cli(
             ["claude", "-p", prompt],
             capture_output=True,
             text=True,
+            encoding="utf-8",  # without this Windows decodes the CLI's stdout as cp1252 and
+                               # mangles every non-ASCII character in the reasoning text
             timeout=timeout_seconds,
         )
     except FileNotFoundError:

@@ -13,9 +13,12 @@ import { Button } from "@/components/ui/button";
 // see src/live_settings.py's docstring for why risk limits stay out of remote reach.
 
 const PROVIDERS = [
-  { value: "groq", label: "Groq" },
-  { value: "featherless", label: "Featherless" },
-  { value: "mistral", label: "Mistral" },
+  { value: "groq", label: "Groq", transport: "http" },
+  { value: "featherless", label: "Featherless", transport: "http" },
+  { value: "mistral", label: "Mistral", transport: "http" },
+  // Subprocess, not HTTP: needs the `claude` binary on PATH. Present on a dev laptop,
+  // absent on the GitHub Actions runner - hence the warning rendered below.
+  { value: "claude_code_cli", label: "Claude Code CLI", transport: "subprocess" },
 ];
 const UNDERLYINGS = ["SPY", "QQQ", "DIA", "IWM"];
 
@@ -96,10 +99,18 @@ export default function AdminPage() {
             </SelectContent>
           </Select>
           <p className="mt-2 text-xs text-muted-foreground">
-            This provider&apos;s decisions execute real (paper) trades. Every other
-            provider automatically becomes shadow-only. Claude Code CLI always stays
-            shadow-only regardless of this setting.
+            This provider&apos;s decisions execute real (paper) trades. The other three
+            automatically become shadow-only for the same cycle.
           </p>
+          {settings.active_model_provider === "claude_code_cli" && (
+            <p className="mt-2 rounded-md border border-amber-500/40 bg-amber-500/10 p-2 text-xs text-amber-700 dark:text-amber-400">
+              Claude Code CLI runs as a subprocess and needs the <code className="font-mono">claude</code>{" "}
+              binary on PATH. The GitHub Actions runner does not have it — selected there, every
+              cycle fails with &ldquo;&apos;claude&apos; CLI not found on PATH&rdquo;, no decision is
+              produced and nothing trades. Use this only when the loop runs on a machine that has
+              the CLI installed and authenticated.
+            </p>
+          )}
         </CardContent>
       </Card>
 

@@ -10,6 +10,8 @@ from typing import Optional
 
 import yaml
 
+from src.decision_schema import decision_matches_rulebook
+
 CONFIG_PATH = Path(__file__).resolve().parent.parent / "config" / "risk_limits.yaml"
 
 
@@ -24,6 +26,10 @@ class TradeProposal:
                                         # number is not a calibrated probability and feeding it into Kelly
                                         # sizing is exactly the math-hallucination risk this gate exists to avoid.
     llm_confidence_score: float = 0.0  # LLM's own confidence, kept for audit-log/display only — never sized on
+    iv_rank: Optional[float] = None      # signals the rulebook and regime halt are evaluated against.
+    classifier_p_up: Optional[float] = None  # Passed separately from classifier_win_probability so the
+                                             # gate re-derives the mandated strategy from raw signals rather
+                                             # than trusting the strategy name it was handed.
 
 
 @dataclass
@@ -61,6 +67,31 @@ def evaluate(proposal: TradeProposal, account: AccountState, limits: Optional[di
 
     if proposal.strategy not in limits["allowed_strategies"]:
         return GateResult(False, f"strategy '{proposal.strategy}' not in allowed_strategies")
+
+    regime = limits.get("market_regime_gate") or {}
+
+    # Rulebook check. A model may decline a trade the rules mandate, but may not propose one
+    # they do not — so a hallucinated or drifted strategy dies here rather than being sized.
+    # This is what makes "the LLM cannot manufacture a trade" a code property.
+    if regime.get("enforce_rulebook", True):
+        permitted, detail = decision_matches_rulebook(
+            proposal.strategy, proposal.iv_rank, proposal.classifier_p_up
+        )
+        if not permitted:
+            return GateResult(False, detail)
+
+    # Regime halt, narrow by design: short-premium structures only. See risk_limits.yaml.
+    halt_at = regime.get("premium_selling_halt_iv_rank")
+    if (
+        halt_at is not None
+        and proposal.strategy == "iron_condor"
+        and proposal.iv_rank is not None
+        and proposal.iv_rank >= halt_at
+    ):
+        return GateResult(
+            False,
+            f"premium-selling halt: iv_rank {proposal.iv_rank:.1f} >= {halt_at} — no new short-vol positions",
+        )
 
     if account.daily_pnl_pct <= -limits["daily_drawdown_halt_pct"]:
         return GateResult(False, f"daily drawdown halt triggered ({account.daily_pnl_pct:.2%})")

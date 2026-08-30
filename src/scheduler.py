@@ -50,7 +50,12 @@ def run_all_cycles(dry_run: bool = True, test_mode: bool = False):
         print(f"[{datetime.now().isoformat()}] running cycle for {underlying} (dry_run={dry_run})")
         try:
             with ThreadPoolExecutor(max_workers=1) as pool:
-                future = pool.submit(run_cycle, underlying, dry_run, settings.active_model_provider)
+                # record_history=not test_mode: by this point a non-test run has already passed
+                # the market_is_open() check above, so only genuine market-hours cycles append to
+                # the IV history. Weekend soak tests must not pollute it.
+                future = pool.submit(
+                    run_cycle, underlying, dry_run, settings.active_model_provider, not test_mode
+                )
                 result = future.result(timeout=CYCLE_TIMEOUT_SECONDS)
             decision = (result.get("live_decision") or {}).get("selected_strategy", "n/a")
             verdict = (result.get("risk_gate_verdict") or {}).get("reason", "n/a")
