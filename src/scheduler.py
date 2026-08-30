@@ -16,6 +16,7 @@ from dotenv import load_dotenv
 from src.audit_log import push_audit_log
 from src.live_settings import fetch_live_settings
 from src.orchestrator import run_cycle
+from src.positions import manage_open_positions
 
 INTERVAL_MINUTES = 15
 CYCLE_TIMEOUT_SECONDS = 90  # alpaca-py sets no request timeout anywhere in its REST layer
@@ -41,10 +42,28 @@ def run_all_cycles(dry_run: bool = True, test_mode: bool = False):
         return
 
     settings = fetch_live_settings()  # pulled fresh every tick — see src/live_settings.py
-    if settings.trading_paused:
-        print(f"[{datetime.now().isoformat()}] trading paused via /admin, skipping cycle")
+    if settings.trading_mode == "paused":
+        print(f"[{datetime.now().isoformat()}] trading paused via /admin, skipping cycle entirely")
         return
-    print(f"[{datetime.now().isoformat()}] live_provider={settings.active_model_provider}  underlyings={settings.underlyings}")
+
+    # Exits run BEFORE entries and in every non-paused mode. Managing existing risk is not
+    # something a kill switch should be able to turn off while positions are still open.
+    if settings.may_close_positions:
+        exits = manage_open_positions(dry_run=dry_run)
+        if exits.get("ok"):
+            for closed in exits.get("closed") or []:
+                print(f"  -> CLOSED {closed['spread']}: {closed['reason']}")
+            for held in exits.get("held") or []:
+                print(f"  -> holding {held['spread']}: {held['reason']}")
+        else:
+            print(f"  -> exit pass failed: {exits.get('error')}")
+
+    if not settings.may_open_new_positions:
+        print(f"[{datetime.now().isoformat()}] mode={settings.trading_mode}: exits only, no new entries")
+        if not test_mode:
+            push_audit_log()
+        return
+    print(f"[{datetime.now().isoformat()}] mode={settings.trading_mode}  live_provider={settings.active_model_provider}  underlyings={settings.underlyings}")
 
     for underlying in settings.underlyings:
         print(f"[{datetime.now().isoformat()}] running cycle for {underlying} (dry_run={dry_run})")

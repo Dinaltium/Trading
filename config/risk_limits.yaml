@@ -39,3 +39,14 @@ execution:
   # then would carry real risk and contribute nothing to the score.
   excluded_expiries:
     - 2026-09-04
+
+exits:
+  # Deterministic stop-loss on open spreads, evaluated from broker-reported P&L and the
+  # strikes parsed off the OCC symbols. No model is consulted: an LLM has no role in
+  # deciding when to cut a loss, for the same reason it has none in sizing one.
+  #
+  # 0.60 means close once 60% of the worst case has already happened. Chosen above the
+  # halfway mark because a defined-risk spread that has given up more than half its width
+  # usually needs a large move back to recover, and below 1.0 so the position is closed
+  # while it still has salvage value rather than expiring worthless.
+  stop_loss_pct_of_max_loss: 0.60

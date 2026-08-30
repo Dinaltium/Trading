@@ -5,7 +5,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 
 // This route only exists on the private, password-protected admin Vercel project —
@@ -22,10 +21,18 @@ const PROVIDERS = [
 ];
 const UNDERLYINGS = ["SPY", "QQQ", "DIA", "IWM"];
 
+// Three states, because "stop everything" is the wrong tool while positions are open —
+// it halts new risk and halts managing existing risk at the same time.
+const MODES = [
+  { value: "running", label: "Running", detail: "Opens new positions and manages existing ones." },
+  { value: "exit_only", label: "Exit only", detail: "No new positions. Stop-losses still evaluate and can close." },
+  { value: "paused", label: "Paused", detail: "Nothing at all — open positions are left unmanaged." },
+];
+
 type Settings = {
   active_model_provider: string;
   underlyings: string[];
-  trading_paused: boolean;
+  trading_mode: string;
 };
 
 export default function AdminPage() {
@@ -142,16 +149,34 @@ export default function AdminPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="font-mono text-sm">Trading paused</CardTitle>
+          <CardTitle className="font-mono text-sm">Trading mode</CardTitle>
         </CardHeader>
-        <CardContent className="flex items-center gap-3">
-          <Switch
-            checked={settings.trading_paused}
-            onCheckedChange={(checked) => setSettings({ ...settings, trading_paused: checked })}
-          />
-          <span className="font-mono text-sm text-muted-foreground">
-            {settings.trading_paused ? "Paused — scheduler skips every cycle" : "Running normally"}
-          </span>
+        <CardContent className="space-y-2">
+          {MODES.map((m) => (
+            <label
+              key={m.value}
+              className="flex cursor-pointer items-start gap-3 rounded-md border p-3 has-[:checked]:border-foreground/40 has-[:checked]:bg-muted/40"
+            >
+              <input
+                type="radio"
+                name="trading_mode"
+                value={m.value}
+                checked={settings.trading_mode === m.value}
+                onChange={() => setSettings({ ...settings, trading_mode: m.value })}
+                className="mt-1"
+              />
+              <span>
+                <span className="block font-mono text-sm">{m.label}</span>
+                <span className="block text-xs text-muted-foreground">{m.detail}</span>
+              </span>
+            </label>
+          ))}
+          {settings.trading_mode === "paused" && (
+            <p className="mt-2 rounded-md border border-amber-500/40 bg-amber-500/10 p-2 text-xs text-amber-700 dark:text-amber-400">
+              Paused also stops stop-loss evaluation. If anything is open, nothing is watching it.
+              Prefer <strong>Exit only</strong> unless you specifically want the agent fully idle.
+            </p>
+          )}
         </CardContent>
       </Card>
 

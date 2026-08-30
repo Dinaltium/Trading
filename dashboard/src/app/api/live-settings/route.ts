@@ -18,11 +18,13 @@ const BRANCH = "main";
 // re-validates independently — the scheduler never trusts this file blindly.
 const ALLOWED_PROVIDERS = ["groq", "featherless", "mistral", "claude_code_cli"];
 const ALLOWED_UNDERLYINGS = ["SPY", "QQQ", "DIA", "IWM"];
+// Must stay in sync with TRADING_MODES in src/live_settings.py.
+const ALLOWED_MODES = ["running", "exit_only", "paused"];
 
 type LiveSettings = {
   active_model_provider: string;
   underlyings: string[];
-  trading_paused: boolean;
+  trading_mode: string;
 };
 
 function validate(body: unknown): LiveSettings | null {
@@ -41,10 +43,14 @@ function validate(body: unknown): LiveSettings | null {
     return null;
   }
 
-  const trading_paused = b.trading_paused;
-  if (typeof trading_paused !== "boolean") return null;
+  // Accepts the older boolean so a client that has not reloaded still validates.
+  let trading_mode = b.trading_mode;
+  if (trading_mode === undefined && typeof b.trading_paused === "boolean") {
+    trading_mode = b.trading_paused ? "paused" : "running";
+  }
+  if (typeof trading_mode !== "string" || !ALLOWED_MODES.includes(trading_mode)) return null;
 
-  return { active_model_provider: provider, underlyings, trading_paused };
+  return { active_model_provider: provider, underlyings, trading_mode };
 }
 
 export async function GET() {
@@ -54,7 +60,7 @@ export async function GET() {
   );
   if (!res.ok) {
     return NextResponse.json(
-      { active_model_provider: "groq", underlyings: ["SPY", "QQQ"], trading_paused: false },
+      { active_model_provider: "groq", underlyings: ["SPY", "QQQ"], trading_mode: "running" },
       { status: 200 }
     );
   }
@@ -101,7 +107,7 @@ export async function POST(req: NextRequest) {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      message: `live_settings: ${settings.active_model_provider}, ${settings.underlyings.join("/")}, paused=${settings.trading_paused}`,
+      message: `live_settings: ${settings.active_model_provider}, ${settings.underlyings.join("/")}, mode=${settings.trading_mode}`,
       content,
       branch: BRANCH,
       ...(currentSha ? { sha: currentSha } : {}),

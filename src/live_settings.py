@@ -33,11 +33,32 @@ ALLOWED_LIVE_PROVIDERS = {"groq", "featherless", "mistral", "claude_code_cli"}
 FETCH_TIMEOUT_SECONDS = 10
 
 
+# Three states, not two. "paused" refuses everything, which is the wrong tool when
+# positions are already open — it stops the agent taking risk and simultaneously stops it
+# managing the risk it took. "exit_only" refuses new entries while still running stop-loss
+# evaluation and closing orders. That distinction only became meaningful once the agent
+# gained the ability to close a position at all; see src/positions.py.
+TRADING_MODES = ("running", "exit_only", "paused")
+
+
 @dataclass
 class LiveSettings:
     active_model_provider: str = "groq"
     underlyings: list[str] = field(default_factory=lambda: ["SPY", "QQQ"])
-    trading_paused: bool = False
+    trading_mode: str = "running"
+
+    @property
+    def may_open_new_positions(self) -> bool:
+        return self.trading_mode == "running"
+
+    @property
+    def may_close_positions(self) -> bool:
+        return self.trading_mode in ("running", "exit_only")
+
+    @property
+    def trading_paused(self) -> bool:
+        """Retained so older callers and the dashboard keep working."""
+        return self.trading_mode == "paused"
 
 
 DEFAULT_SETTINGS = LiveSettings()
@@ -63,12 +84,18 @@ def fetch_live_settings() -> LiveSettings:
     if not isinstance(underlyings, list) or not underlyings:
         underlyings = DEFAULT_SETTINGS.underlyings
 
-    trading_paused = bool(data.get("trading_paused", False))
+    # Accept the newer trading_mode, falling back to the older boolean so a settings file
+    # written before this change still resolves to a valid state rather than a crash.
+    mode = data.get("trading_mode")
+    if mode not in TRADING_MODES:
+        if mode is not None:
+            print(f"[live_settings] '{mode}' is not a valid trading mode, falling back")
+        mode = "paused" if bool(data.get("trading_paused", False)) else "running"
 
     return LiveSettings(
         active_model_provider=provider,
         underlyings=[str(u).upper() for u in underlyings],
-        trading_paused=trading_paused,
+        trading_mode=mode,
     )
 
 
