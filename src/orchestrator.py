@@ -148,7 +148,24 @@ def run_cycle(
     direction = train_and_predict(stock_client, underlying)
 
     if vol is None or direction is None:
-        return {"error": "insufficient signal data this cycle", "underlying": underlying}
+        # Previously a bare dict return: no audit record was written at all, so a cycle that
+        # died on missing signal data was indistinguishable from one that never ran. The
+        # blocked-and-logged guarantee has to hold for the earliest abort too.
+        missing = [n for n, v in (("volatility", vol), ("direction", direction)) if v is None]
+        return write_cycle_record(
+            underlying=underlying,
+            signals={"underlying": underlying, "current_price": price},
+            live_decision=None,
+            shadow_decisions={},
+            risk_gate_verdict={
+                "approved": False,
+                "reason": f"insufficient signal data ({', '.join(missing)}); no model consulted",
+            },
+            fill_result=None,
+            dry_run=dry_run,
+            account_equity=account_state.equity,
+            live_provider=live_provider,
+        )
 
     signals = {
         "underlying": underlying,
@@ -219,6 +236,10 @@ def run_cycle(
     # --- risk gate + execution, live decision only ---
     risk_verdict = None
     fill_result = None
+    reconciliation = None  # Guard 4's verdict, kept so a PASSING reconciliation leaves a
+                           # trace too. Previously it was a local read once to decide whether
+                           # to raise, so a successful check was indistinguishable in the log
+                           # from one that never ran.
 
     # TradeTrap guard 2 of 4 — strategy formulation. A model that quotes a signal value it
     # was never given has fabricated its own input; its conclusion is unsupported even when
@@ -262,30 +283,47 @@ def run_cycle(
                     "failures_at_trip": state.breaker_failures_at_trip,
                     "last_error": state.last_execution_error,
                 }
-            elif gate_result.approved and not dry_run:
-                # Submission goes through the Alpaca CLI, which re-verifies the paper
-                # endpoint out-of-process before the order is built. See src/alpaca_cli.py.
+            elif gate_result.approved:
+                # TradeTrap guard 4 of 4 — portfolio & ledger. Checked at the last possible
+                # moment against a second, independent read of broker state: trading on a
+                # stale position map is how a diversification cap silently stops capping.
+                #
+                # Deliberately OUTSIDE the dry_run branch. It used to sit on the live-only
+                # path, which meant that in the deployed configuration — every scheduled
+                # cycle runs without --live — Guard 4 never executed at all. A guard that
+                # only runs in the mode you are not running is not a guard. It is a
+                # read-only check, so there is no reason to skip it.
+                recon = reconcile_positions(
+                    account_state.open_underlyings, account_state.equity, get_broker_state()
+                )
+                reconciliation = recon.as_record()
+
                 try:
-                    # TradeTrap guard 4 of 4 — portfolio & ledger. Checked here, at the last
-                    # possible moment, against a second independent read of broker state.
-                    # Trading on a stale position map is how a diversification cap silently
-                    # stops capping.
-                    recon = reconcile_positions(
-                        account_state.open_underlyings, account_state.equity, get_broker_state()
-                    )
                     if not recon.passed:
                         raise LiveEndpointError("reconciliation failed: " + "; ".join(recon.failures))
+                    if dry_run:
+                        fill_result = {
+                            "dry_run": True,
+                            "would_submit": spread.strategy,
+                            "contracts": gate_result.contracts,
+                            "reconciled": True,
+                        }
+                        raise StopIteration  # skip the live path without duplicating the except
+                    # Submission goes through the Alpaca CLI, which re-verifies the paper
+                    # endpoint out-of-process before the order is built. See src/alpaca_cli.py.
                     fill_result = submit_spread_via_cli(spread, gate_result.contracts)
                     if fill_result.get("submitted"):
                         state.record_execution_success(when=datetime.now(timezone.utc).isoformat())
                     else:
                         state.record_execution_failure(str(fill_result.get("error")))
+                except StopIteration:
+                    pass  # dry run: the gate and all four guards ran, only the order did not
                 except LiveEndpointError as e:
-                    # Never downgraded to a warning: an unverified endpoint means no order.
-                    state.record_execution_failure(str(e))
-                    fill_result = {"submitted": False, "via": "alpaca_cli", "error": f"endpoint check failed: {e}"}
-            elif gate_result.approved and dry_run:
-                fill_result = {"dry_run": True, "would_submit": spread.strategy, "contracts": gate_result.contracts}
+                    # Never downgraded to a warning: an unverified endpoint or a failed
+                    # reconciliation means no order, in either mode.
+                    if not dry_run:
+                        state.record_execution_failure(str(e))
+                    fill_result = {"submitted": False, "via": "alpaca_cli", "error": str(e)}
 
     live_rulebook = _score_against_rulebook(live_decision, vol.iv_rank, direction.p_up)
 
@@ -293,6 +331,7 @@ def run_cycle(
         "signals": signal_guard.as_record(),
         "faithfulness": faithfulness.as_record(),
         "cross_model_agreement": agreement,
+        "reconciliation": reconciliation,  # None when the cycle never reached submission
         "heartbeat": heartbeat,
         "azte_trigger": trigger.as_record(),
         "agent_state": state.as_record(),

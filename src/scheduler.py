@@ -13,7 +13,7 @@ from alpaca.trading.client import TradingClient
 from apscheduler.schedulers.blocking import BlockingScheduler
 from dotenv import load_dotenv
 
-from src.audit_log import push_audit_log
+from src.audit_log import push_audit_log, write_exit_record
 from src.live_settings import fetch_live_settings
 from src.orchestrator import run_cycle
 from src.positions import manage_open_positions
@@ -50,6 +50,7 @@ def run_all_cycles(dry_run: bool = True, test_mode: bool = False):
     # something a kill switch should be able to turn off while positions are still open.
     if settings.may_close_positions:
         exits = manage_open_positions(dry_run=dry_run)
+        write_exit_record(exits, dry_run=dry_run)  # closes belong in the audit log, not just stdout
         if exits.get("ok"):
             for closed in exits.get("closed") or []:
                 print(f"  -> CLOSED {closed['spread']}: {closed['reason']}")

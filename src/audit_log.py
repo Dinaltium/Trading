@@ -71,6 +71,50 @@ def write_cycle_record(
     return record
 
 
+def write_exit_record(
+    exit_result: dict,
+    dry_run: bool,
+    log_path: Path = LOG_PATH,
+) -> Optional[dict]:
+    """Append one record for an exit pass that actually did something.
+
+    The exit path used to be invisible: close_spread_via_cli built a dict its own docstring
+    called audit-ready, manage_open_positions returned it, and the scheduler print()ed it to
+    stdout and dropped it. Nothing about closing a position ever reached the audit log, so a
+    stop-loss that fired left no durable trace while every entry decision did.
+
+    Returns None when nothing happened, so a quiet tick does not pad the log. Holds are
+    summarised rather than written in full — the interesting event is the close."""
+    if not exit_result or not exit_result.get("ok"):
+        if exit_result and exit_result.get("error"):
+            record = {
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "record_type": "exit_pass",
+                "dry_run": dry_run,
+                "error": exit_result.get("error"),
+            }
+        else:
+            return None
+    else:
+        closed = exit_result.get("closed") or []
+        held = exit_result.get("held") or []
+        if not closed:
+            return None  # nothing closed: the held summary lives in the cycle records already
+        record = {
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "record_type": "exit_pass",
+            "dry_run": dry_run,
+            "open_spreads": exit_result.get("open_spreads"),
+            "closed": _to_jsonable(closed),
+            "held_count": len(held),
+        }
+
+    log_path.parent.mkdir(exist_ok=True)
+    with open(log_path, "a") as f:
+        f.write(json.dumps(record) + "\n")
+    return record
+
+
 def push_audit_log(commit_message: Optional[str] = None) -> bool:
     """Best-effort git add+commit+push of the audit log so the deployed dashboard
     (which has no access to this machine's filesystem — see dashboard/) can read
