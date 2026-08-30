@@ -30,3 +30,12 @@ market_regime_gate:
   # high-IV cycles - including 19 textbook condor setups.
   premium_selling_halt_iv_rank: 90.0   # no NEW iron_condor at or above this IV rank
   enforce_rulebook: true               # reject any strategy the deterministic rulebook does not mandate
+
+execution:
+  target_dte_days: 7          # preferred days-to-expiry when picking a chain
+  # Expiries the agent must never open into. Sep 4 2026 is the hackathon's own deadline day:
+  # the official P&L snapshot is taken at EOD Thursday Sep 3, and lablab confirmed that
+  # positions expiring Friday Sep 4 are EXCLUDED from that measurement. A spread expiring
+  # then would carry real risk and contribute nothing to the score.
+  excluded_expiries:
+    - 2026-09-04

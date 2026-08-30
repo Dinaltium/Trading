@@ -20,7 +20,12 @@ from openai import OpenAI
 # provider name -> (env var for key, base_url, default model)
 PROVIDERS = {
     "groq": ("GROQ_API_KEY", "https://api.groq.com/openai/v1", "openai/gpt-oss-120b"),
-    "featherless": ("FEATHER_API_KEY", "https://api.featherless.ai/v1", "TheDrummer/Anubis-70B-v1"),
+    # Qwen3.5-9B, not Anubis-70B. Anubis is a roleplay/creative-writing finetune — it happens
+    # to emit valid JSON, but "70B" is not the relevant axis when the tuning objective is
+    # fiction. It also returns "temporarily at capacity" under load. Qwen3.5-9B measured
+    # 4/4 clean parses at 3-8s with a stable pick, and is architecturally distinct from
+    # Groq's gpt-oss-120b, which matters for a benchmark whose whole point is independence.
+    "featherless": ("FEATHER_API_KEY", "https://api.featherless.ai/v1", "Qwen/Qwen3.5-9B"),
     # mistral-large-latest is gated behind a paid tier and returns 403 tier_not_allowed on
     # the free key; medium is the strongest model this account can actually call.
     "mistral": ("MISTRAL_API_KEY", "https://api.mistral.ai/v1", "mistral-medium-latest"),
@@ -79,9 +84,24 @@ def call_openai_compatible(
             error_message = str(err)
         return ModelCallResult(provider, ok=False, error=error_message)
 
-    content = resp.choices[0].message.content
+    message = resp.choices[0].message
+    content = message.content
+
+    # Reasoning models return their answer in `reasoning` (or `reasoning_content`) and leave
+    # `content` empty. Reading only `content` silently discarded the entire response and
+    # reported "empty content field" — which looked like a provider outage but was ours.
+    # It locked us out of every reasoning-capable model on Featherless, which is most of the
+    # strong ones. Preference order matters: a model that fills BOTH puts its final answer
+    # in content and its scratchpad in reasoning, so content wins whenever it is present.
     if not content:
-        return ModelCallResult(provider, ok=False, error="empty content field", raw=resp)
+        for attr in ("reasoning_content", "reasoning"):
+            candidate = getattr(message, attr, None)
+            if candidate:
+                content = candidate
+                break
+
+    if not content:
+        return ModelCallResult(provider, ok=False, error="no content in any response field", raw=resp)
 
     return ModelCallResult(provider, ok=True, content=content, raw=resp)
 

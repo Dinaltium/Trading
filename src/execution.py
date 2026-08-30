@@ -12,6 +12,10 @@ OCC symbol — per the alpaca-trading-paper-trading-mcp skill's rule 19.
 
 import os
 from dataclasses import dataclass
+from datetime import date, datetime
+from pathlib import Path
+
+import yaml
 from typing import Optional
 
 from alpaca.data.historical.option import OptionHistoricalDataClient
@@ -63,6 +67,30 @@ def _mid_price(snap) -> Optional[float]:
     return None
 
 
+def _load_execution_config() -> dict:
+    """Execution constraints live in risk_limits.yaml alongside the other hard limits,
+    hand-edited only — an expiry the agent must not touch is a risk rule, not a preference."""
+    try:
+        with open(Path(__file__).resolve().parent.parent / "config" / "risk_limits.yaml", "r") as f:
+            return (yaml.safe_load(f) or {}).get("execution") or {}
+    except (OSError, yaml.YAMLError):
+        return {}
+
+
+def _excluded_expiries() -> set:
+    raw = _load_execution_config().get("excluded_expiries") or []
+    out = set()
+    for item in raw:
+        if isinstance(item, date):
+            out.add(item)
+        else:
+            try:
+                out.add(datetime.strptime(str(item), "%Y-%m-%d").date())
+            except ValueError:
+                continue
+    return out
+
+
 def _nearest_expiry_chain(chain: dict, target_dte_days: int = 7) -> dict:
     """Filters the full chain to whichever expiry date is closest to target_dte_days out.
     Defaults to ~weekly, per AGENTS.md's 'favor short-dated options' guidance."""
@@ -76,6 +104,11 @@ def _nearest_expiry_chain(chain: dict, target_dte_days: int = 7) -> dict:
         except ValueError:
             continue
         expiries.setdefault(exp_date, []).append(symbol)
+
+    # Drop any expiry the risk config forbids before choosing. Filtering after selection
+    # would silently fall back to no trade; filtering before picks the next-best expiry.
+    for banned in _excluded_expiries():
+        expiries.pop(banned, None)
 
     if not expiries:
         return {}
