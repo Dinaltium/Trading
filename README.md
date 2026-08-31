@@ -3,7 +3,7 @@
 Autonomous AI options-trading agent built for the [Alpaca AI Trading Agents Hackathon](https://lablab.ai/ai-hackathons/alpaca-ai-trading-agents-hackathon) (lablab.ai × Alpaca, Aug 28–Sep 4, 2026), Options Alpha track.
 
 **Live dashboard:** https://alpaca-trade-intelli.vercel.app (public, read-only)
-**Deeper docs:** [`docs/playbook.html`](docs/playbook.html) (full architecture walkthrough) · [`docs/markets101.html`](docs/markets101.html) (options/markets basics, no finance background assumed) · [`docs/architecture.svg`](docs/architecture.svg) (one-page system diagram)
+**Deeper docs:** [`docs/graveyard.md`](docs/graveyard.md) (every defect this agent had, and what now catches it) · [`docs/playbook.html`](docs/playbook.html) (full architecture walkthrough) · [`docs/markets101.html`](docs/markets101.html) (options/markets basics, no finance background assumed) · [`docs/architecture.svg`](docs/architecture.svg) (one-page system diagram)
 
 ---
 
@@ -17,7 +17,7 @@ A robot that watches SPY and QQQ options every 15 minutes, gets a trade proposal
 
 The model's authority is deliberately narrow, and this is the core design claim: **a model may decline a trade the rules mandate, but it can never propose one they don't.** A deterministic rulebook maps every possible signal combination to exactly one strategy. The model returns that strategy or it returns cash. Anything else is rejected in Python — re-derived from the raw signals rather than from the model's own summary of them. Discretion to decline, not to substitute.
 
-Four AI models see the exact same signals every cycle. Only one is live; the other three run in shadow, logged and never touching the account. Every one of the four is scored against the rulebook on every cycle, so "which model is better" becomes counted evidence rather than a claim.
+Three AI models see the exact same signals every cycle. Only one is live; the other two run in shadow, logged and never touching the account. Every one of the three is scored against the rulebook on every cycle, so "which model is better" becomes counted evidence rather than a claim. It was four until two providers turned out to be unreachable unattended for different reasons - both are documented in the graveyard rather than quietly dropped.
 
 Around that sits an integrity layer — four guards that assume the agent's own inputs and outputs can be wrong or fabricated. See below.
 
@@ -26,18 +26,18 @@ Around that sits an integrity layer — four guards that assume the agent's own 
 ## The pipeline
 
 ```
-Every 15 minutes, market hours (runs on GitHub Actions — not anyone's laptop):
+Every 15 minutes, market hours (one GitHub Actions job per session — not anyone's laptop):
 
   1. Pull live price + option chain from Alpaca
   2. Compute signals: IV Rank, VRP (volatility), LightGBM P(Up) (direction)
   3. GUARD 1 — validate the signal vector. Out of range, NaN or internally
      inconsistent, and no model is consulted at all
-  4. Send those signals to 4 AI models in parallel
+  4. Send those signals to 3 AI models in parallel
        Groq          → LIVE, can execute      (configurable from /admin)
-       Claude Code CLI, Featherless, Mistral → shadow, logged only
+       Featherless, Mistral → shadow, logged only
   5. GUARD 2 — faithfulness. Every signal figure the live model quotes in its
      reasoning must match what it was handed. A fabricated number kills the trade
-  6. GUARD 3 — cross-validation. Record how many of the four independent models
+  6. GUARD 3 — cross-validation. Record how many of the independent models
      reached the same answer
   7. RULEBOOK — reject any strategy the deterministic rules do not mandate
   8. RISK GATE (plain Python, zero AI):
@@ -59,7 +59,7 @@ Every 15 minutes, market hours (runs on GitHub Actions — not anyone's laptop):
 | **Direction signal** | LightGBM binary classifier, isotonic-calibrated, walk-forward retrained | Outputs P(Up) — the only quantitative number the AI reasons with |
 | **Volatility signal** | IV Rank + Volatility Risk Premium (VRP), computed from Alpaca's live option chain | "Is volatility expensive right now" |
 | **Live reasoning (executes)** | [Groq](https://groq.com) — free, fast open-model inference | Picks one of: bull call spread / bear put spread / iron condor / cash |
-| **Shadow reasoning (logged only)** | Claude Code CLI, [Featherless](https://featherless.ai), [Mistral](https://mistral.ai) | Same signals, same rules, never executes — pure benchmark data |
+| **Shadow reasoning (logged only)** | [Featherless](https://featherless.ai), [Mistral](https://mistral.ai) | Same signals, same rules, never executes — pure benchmark data |
 | **Rulebook** | Deterministic decision table over (IV Rank, P(Up)), exhaustive by construction | The model may match it or choose cash — nothing else survives |
 | **Risk gate** | Deterministic Python, Kelly sizing off the calibrated classifier probability (never an LLM's self-reported confidence) | Final, non-AI approval/rejection on every proposed trade |
 | **Integrity guards** | Four deterministic checks structured on TradeTrap's attack-surface taxonomy | Signal validation, faithfulness, cross-validation, reconciliation |

@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="980" height="1350" viewBox="0 0 980 1350" role="img">
 <title>Options Alpha Agent — one trading cycle end to end</title>
-<desc>Each scheduler tick first runs an exit pass in every non-paused mode: open spreads are read from the broker, valued against their worst case from cost basis or strike width, checked against a deterministic stop-loss, and closed as a multi-leg order with explicit close intents. Only when the mode is running does the entry pipeline follow. Two signal engines feed a quant signal vector; if either is unavailable the cycle aborts and is logged. Guard 1 validates the vector before any model sees it, blocking on ranges and NaN and warning on consistency. An AZTE z-score is recorded but does not gate. One configured model is live and the other three shadow it on identical inputs. Guard 2 checks the four named signals the live model quotes against the payload it was given, and Guard 3 scores agreement across all four. A model that chooses cash, or returns nothing usable, ends the cycle there. Otherwise a spread is built from the live chain, the risk gate applies the rulebook and every limit, a disk-persisted circuit breaker can block, and Guard 4 reconciles the agent's position map against a second independent broker read in both dry-run and live modes. Only submission itself is live-only. Every rejection, abstention and fill is written to one audit log.</desc>
+<desc>Each scheduler tick first runs an exit pass in every non-paused mode: open spreads are read from the broker, valued against their worst case from cost basis or strike width, checked against a deterministic stop-loss, and closed as a multi-leg order with explicit close intents. Only when the mode is running does the entry pipeline follow. Two signal engines feed a quant signal vector; if either is unavailable the cycle aborts and is logged. Guard 1 validates the vector before any model sees it, blocking on ranges and NaN and warning on consistency. An AZTE z-score is recorded but does not gate. One configured model is live and the other two shadow it on identical inputs. Guard 2 checks every signal figure the live model quotes against the payload it was given, and Guard 3 scores agreement across all three. A model that chooses cash ends the cycle there; a model that returns nothing usable does not, because the agent then executes the strategy its own deterministic rulebook mandates, with no model in the loop, so a provider outage cannot become a trading halt. Otherwise a spread is built from the live chain, the risk gate refuses underlyings under adaptive restriction after three consecutive losing closes, then applies the rulebook and every limit, a disk-persisted circuit breaker can block, and Guard 4 reconciles the agent's position map against a second independent broker read in both dry-run and live modes. Only submission itself is live-only. Every rejection, abstention and fill is written to one audit log.</desc>
 
 <defs>
   <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
@@ -46,7 +46,7 @@
 <text x="500" y="1150" class="elbl">--live only</text>
 <line x1="490" y1="1219" x2="490" y2="1255" class="edge" marker-end="url(#arrow)"/>
 
-<!-- the same payload reaches all four models; AZTE sits between them in call order only -->
+<!-- the same payload reaches all three models; AZTE sits between them in call order only -->
 <line x1="700" y1="561" x2="830" y2="601" class="edge" marker-end="url(#arrow)"/>
 <line x1="850" y1="655" x2="850" y2="695" class="edge" marker-end="url(#arrow)"/>
 <line x1="850" y1="749" x2="850" y2="1255" class="edge" marker-end="url(#arrow)"/>
@@ -76,7 +76,7 @@
 
 <g><rect x="340" y="26" width="300" height="54" rx="8" fill="#f1efe8" stroke="#5f5e5a" stroke-width="0.5"/>
 <text x="490" y="44" class="lbl" fill="#444441">Scheduler tick</text>
-<text x="490" y="62" class="sub" fill="#5f5e5a">GitHub Actions · 15 min · Alpaca clock</text></g>
+<text x="490" y="62" class="sub" fill="#5f5e5a">GitHub Actions · one job per session, 15 min internally · Alpaca clock</text></g>
 
 <g><rect x="30" y="120" width="290" height="54" rx="8" fill="#e1f5ee" stroke="#0f6e56" stroke-width="0.5"/>
 <text x="175" y="138" class="lbl" fill="#085041">Open spreads</text>
@@ -92,7 +92,7 @@
 
 <g><rect x="250" y="225" width="230" height="54" rx="8" fill="#e1f5ee" stroke="#0f6e56" stroke-width="0.5"/>
 <text x="365" y="243" class="lbl" fill="#085041">IV Rank + VRP</text>
-<text x="365" y="261" class="sub" fill="#0f6e56">ranked on prior history only</text></g>
+<text x="365" y="261" class="sub" fill="#0f6e56">prior history only · trusted at 30 samples over 2 days</text></g>
 
 <g><rect x="500" y="225" width="230" height="54" rx="8" fill="#e1f5ee" stroke="#0f6e56" stroke-width="0.5"/>
 <text x="615" y="243" class="lbl" fill="#085041">LightGBM direction</text>
@@ -100,7 +100,7 @@
 
 <g><rect x="250" y="319" width="480" height="54" rx="8" fill="#f1efe8" stroke="#5f5e5a" stroke-width="0.5"/>
 <text x="490" y="337" class="lbl" fill="#444441">Quant signal vector</text>
-<text x="490" y="355" class="sub" fill="#5f5e5a">P(Up) · IV rank/pct · VRP · regime · decision_time · data_cutoff</text></g>
+<text x="490" y="355" class="sub" fill="#5f5e5a">P(Up) · IV rank/pct + trusted · VRP · regime · decision_time · data_cutoff</text></g>
 
 <g><rect x="250" y="413" width="480" height="54" rx="8" fill="#fbe9e6" stroke="#a83a2b" stroke-width="0.5"/>
 <text x="490" y="431" class="lbl" fill="#8c2f22">Guard 1 · Signal validation</text>
@@ -112,31 +112,32 @@
 
 <g><rect x="250" y="601" width="480" height="54" rx="8" fill="#eeedfe" stroke="#534ab7" stroke-width="0.5"/>
 <text x="490" y="619" class="lbl" fill="#3c3489">Live model — configured</text>
-<text x="490" y="637" class="sub" fill="#534ab7">Groq by default · any of the four, chosen in /admin</text></g>
+<text x="490" y="637" class="sub" fill="#534ab7">Groq by default · any of the three, chosen in /admin</text></g>
 
 <g><rect x="750" y="601" width="200" height="54" rx="8" fill="#eeedfe" stroke="#534ab7" stroke-width="0.5"/>
-<text x="850" y="619" class="lbl" fill="#3c3489">The other three</text>
+<text x="850" y="619" class="lbl" fill="#3c3489">The other two</text>
 <text x="850" y="637" class="sub" fill="#534ab7">shadow — never execute</text></g>
 
 <g><rect x="250" y="695" width="480" height="54" rx="8" fill="#fbe9e6" stroke="#a83a2b" stroke-width="0.5"/>
 <text x="490" y="713" class="lbl" fill="#8c2f22">Guard 2 · Faithfulness</text>
-<text x="490" y="731" class="sub" fill="#a83a2b">the four named signals it quotes must match the payload</text></g>
+<text x="490" y="731" class="sub" fill="#a83a2b">every signal figure it quotes must match the payload</text></g>
 
 <g><rect x="750" y="695" width="200" height="54" rx="8" fill="#fbe9e6" stroke="#a83a2b" stroke-width="0.5"/>
 <text x="850" y="713" class="lbl" fill="#8c2f22">Guard 3</text>
-<text x="850" y="731" class="sub" fill="#a83a2b">4-model agreement</text></g>
+<text x="850" y="731" class="sub" fill="#a83a2b">3-model agreement</text></g>
 
 <g><rect x="250" y="789" width="480" height="54" rx="8" fill="#e1f5ee" stroke="#0f6e56" stroke-width="0.5"/>
 <text x="490" y="807" class="lbl" fill="#085041">Build spread from live chain</text>
 <text x="490" y="825" class="sub" fill="#0f6e56">nearest expiry · excluded_expiries · delta-selected legs</text></g>
 
 <g><rect x="750" y="789" width="200" height="54" rx="8" fill="#f1efe8" stroke="#5f5e5a" stroke-width="0.5"/>
-<text x="850" y="807" class="lbl" fill="#444441">Cash / no decision</text>
-<text x="850" y="825" class="sub" fill="#5f5e5a">logged, cycle ends</text></g>
+<text x="850" y="800" class="lbl" fill="#444441">Model declines → cash</text>
+<text x="850" y="817" class="sub" fill="#5f5e5a">logged, cycle ends</text>
+<text x="850" y="833" class="sub" fill="#5f5e5a">model unreachable → rulebook mandate, no LLM</text></g>
 
 <g><rect x="250" y="883" width="480" height="54" rx="8" fill="#faeeda" stroke="#854f0b" stroke-width="0.5"/>
 <text x="490" y="901" class="lbl" fill="#633806">Risk gate</text>
-<text x="490" y="919" class="sub" fill="#854f0b">rulebook → regime halt → drawdown → Kelly → open-risk cap</text></g>
+<text x="490" y="919" class="sub" fill="#854f0b">restriction → rulebook → regime halt → drawdown → Kelly → open-risk cap</text></g>
 
 <g><rect x="250" y="977" width="480" height="54" rx="8" fill="#faeeda" stroke="#854f0b" stroke-width="0.5"/>
 <text x="490" y="995" class="lbl" fill="#633806">Circuit breaker</text>
@@ -148,7 +149,7 @@
 
 <g><rect x="250" y="1165" width="480" height="54" rx="8" fill="#e1f5ee" stroke="#0f6e56" stroke-width="0.5"/>
 <text x="490" y="1183" class="lbl" fill="#085041">Alpaca CLI execution</text>
-<text x="490" y="1201" class="sub" fill="#0f6e56">doctor-verified paper · preview, then submit · atomic MLEG</text></g>
+<text x="490" y="1201" class="sub" fill="#0f6e56">doctor-verified paper · limit cushioned off mid · atomic MLEG</text></g>
 
 <g><rect x="750" y="1165" width="200" height="54" rx="8" fill="#f1efe8" stroke="#5f5e5a" stroke-width="0.5"/>
 <text x="850" y="1183" class="lbl" fill="#444441">Dry run — default</text>
@@ -156,7 +157,7 @@
 
 <g><rect x="250" y="1255" width="700" height="60" rx="8" fill="#f1efe8" stroke="#5f5e5a" stroke-width="0.5"/>
 <text x="600" y="1275" class="lbl" fill="#444441">Audit log</text>
-<text x="600" y="1295" class="sub" fill="#5f5e5a">signals · 4 decisions · 4 guard verdicts · risk verdict · fill · exits</text></g>
+<text x="600" y="1295" class="sub" fill="#5f5e5a">signals · 3 decisions · 4 guard verdicts · rulebook · risk verdict · fill · exits</text></g>
 
 <!-- ============ legend ============ -->
 <g>
