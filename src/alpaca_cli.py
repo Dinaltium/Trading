@@ -202,6 +202,19 @@ def submit_spread_via_cli(spread, contracts: int) -> dict:
     return record
 
 
+def underlying_root(symbol: str) -> str:
+    """The underlying ticker from an OCC option symbol, e.g. AAPL260904C00320000 -> AAPL.
+
+    Defined once and shared, because two independent derivations of it is exactly the bug
+    Guard 4 exists to catch and would itself have caused. The orchestrator previously took
+    symbol[:3], which is right for SPY/QQQ/IWM by luck and wrong for any four-letter root:
+    AAPL became AAP, so the believed position map and the broker's own read disagreed on
+    every AAPL position and reconciliation blocked the order. OCC pads the root to six
+    characters, so the leading alphabetic run is the ticker regardless of its length.
+    """
+    return "".join(c for c in symbol[:6] if c.isalpha())
+
+
 def get_broker_state() -> dict:
     """Ground truth for reconciliation, read through the CLI rather than the SDK.
 
@@ -221,7 +234,7 @@ def get_broker_state() -> dict:
     for row in rows if isinstance(rows, list) else []:
         symbol = (row or {}).get("symbol") or ""
         # OCC option symbols carry the underlying as the leading alphabetic run.
-        root = "".join(c for c in symbol[:6] if c.isalpha())
+        root = underlying_root(symbol)
         if root:
             underlyings.add(root)
 

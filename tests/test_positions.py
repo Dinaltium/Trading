@@ -166,3 +166,31 @@ def test_close_is_a_single_mleg_order(condor):
 def test_dry_run_flag_is_opt_in(condor):
     assert "--dry-run" not in build_close_args(condor, "id")
     assert "--dry-run" in build_close_args(condor, "id", dry_run=True)
+
+
+# --- underlying root derivation --------------------------------------------------------
+# Guard 4 compares the agent's believed position map against an independent read of broker
+# state. Both sides must spell the underlying identically or every four-letter ticker
+# reconciles as simultaneously missing and phantom, blocking the order.
+
+def test_underlying_root_handles_three_and_four_letter_tickers():
+    from src.alpaca_cli import underlying_root
+
+    assert underlying_root("SPY260904P00752000") == "SPY"
+    assert underlying_root("QQQ260904C00600000") == "QQQ"
+    assert underlying_root("IWM260904P00290000") == "IWM"
+    assert underlying_root("AAPL260904C00320000") == "AAPL"
+
+
+def test_both_sides_of_reconciliation_agree_on_the_root():
+    """The orchestrator's believed set and the CLI's broker read must derive roots the same
+    way. symbol[:3] was right for SPY by luck and turned AAPL into AAP."""
+    from src.alpaca_cli import underlying_root
+
+    for symbol, expected in [
+        ("AAPL260904C00320000", "AAPL"),
+        ("SPY260904P00752000", "SPY"),
+    ]:
+        believed = underlying_root(symbol) if len(symbol) > 6 else symbol
+        broker = underlying_root(symbol)
+        assert believed == broker == expected

@@ -21,7 +21,7 @@ from datetime import datetime, timedelta, timezone
 
 from src.agent_state import AgentState
 from src.audit_log import write_cycle_record
-from src.alpaca_cli import LiveEndpointError, get_broker_state, submit_spread_via_cli
+from src.alpaca_cli import LiveEndpointError, get_broker_state, submit_spread_via_cli, underlying_root
 from src.decision_schema import (
     SYSTEM_PROMPT,
     build_user_payload,
@@ -62,7 +62,9 @@ ALL_PROVIDERS = list(ALL_HTTP_PROVIDERS)
 def get_account_state(trading_client: TradingClient) -> AccountState:
     acct = trading_client.get_account()
     positions = trading_client.get_all_positions()
-    open_underlyings = {p.symbol[:3].rstrip("0123456789") if len(p.symbol) > 6 else p.symbol for p in positions}
+    # Same derivation the broker-state read uses — see alpaca_cli.underlying_root. Two
+    # spellings of this produced a set that could never reconcile for a four-letter ticker.
+    open_underlyings = {underlying_root(p.symbol) if len(p.symbol) > 6 else p.symbol for p in positions}
     # crude open-risk proxy: sum of |market_value| for option positions, refined once real
     # positions exist to track from (currently 0 on a flat dev account)
     open_risk = sum(abs(float(p.market_value)) for p in positions if getattr(p, "asset_class", None) and "option" in str(p.asset_class).lower())

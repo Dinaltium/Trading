@@ -2,9 +2,11 @@
   "active_model_provider": "groq",
   "underlyings": [
     "SPY",
-    "QQQ"
+    "QQQ",
+    "IWM",
+    "AAPL"
   ],
-  "updated_at": "2026-08-31T16:05:00+00:00",
-  "updated_by": "unpause-for-session-runner",
+  "updated_at": "2026-08-31T17:50:00+00:00",
+  "updated_by": "widen-universe",
   "trading_mode": "running"
 }
