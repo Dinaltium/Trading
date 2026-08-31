@@ -6,9 +6,16 @@ final project submission.
 **Split:** Rafan posts on X, Prateek posts on LinkedIn.
 **Tags — X:** `@lablabai` `@AlpacaHQ` · **LinkedIn:** lablab.ai, Alpaca.
 
+**The arc.** Days 1–4 carry no project name — they are about what was built and what broke.
+Day 5 is the naming post, which earns its place precisely because four days of work came
+first: the name explains the design rather than decorating it. Days 6–7 use the name.
+
 Days 1–3 are backfill and are written in past tense so they read honestly as catch-up rather
 than pretending to have been posted live. Everything in them is checkable against the commit
 history and the public audit log.
+
+**Nothing before Day 5 contains a project name.** Say "the agent" or "our agent". Resist the
+urge to slip it in early; the reveal only works if it is actually a reveal.
 
 **Rules for editing these:** every number here is real and verified. If you change a figure,
 change it to another real one. The whole value of a build-in-public post about setbacks is
@@ -196,7 +203,59 @@ No test failed for four days. That is the real lesson.
 
 ---
 
-## Day 5 — Sep 1 · The scheduler that never ran
+## Day 5 — Sep 1 · The naming post
+
+Post this only after Days 1–4 are up. It works because four days of building came first: the
+name is an argument about the design, not a label applied to it.
+
+Swap `{{NAME}}` and pick the matching tagline from the table at the bottom of this file.
+
+### X (Rafan)
+
+```
+Four days in, we finally named it.
+
+We built the thing first on purpose. A name you pick before you know
+what you've built is decoration.
+
+Meet {{NAME}}.
+
+{{TAGLINE}}
+
+The model reasons. It never decides.
+
+@lablabai @AlpacaHQ #buildinpublic
+```
+
+### LinkedIn (Prateek)
+
+```
+Four days into the Alpaca AI Trading Agents Hackathon, our project finally has a name.
+
+We deliberately built first. A name chosen before you know what you have built is
+decoration; a name chosen after it is an argument about the design.
+
+Introducing {{NAME}}.
+
+{{TAGLINE}}
+
+That is the whole thesis. Our agent hands a language model a handful of named, pre-computed
+numbers and asks for one thing: a strategy. A deterministic rulebook has already decided
+which single strategy those numbers permit. The model may return that one, or it may return
+cash. Anything else is rejected in Python, re-derived from the raw signals rather than
+trusted from the model's own account of them.
+
+The model's discretion is the discretion to decline, never to substitute. Everything that
+sizes a position, caps a loss or halts the day is plain Python that no model can reach.
+
+Four days of building taught us what the project actually was. Then we named it.
+
+#BuildInPublic #AITrading #Alpaca
+```
+
+---
+
+## Day 6 — Sep 2 · The scheduler that never ran
 
 ### X (Rafan)
 
@@ -244,7 +303,7 @@ was never broken.
 
 ---
 
-## Day 6 — Sep 2/3 · Letting a generator find what we couldn't
+## Day 7 — Sep 3 · Letting a generator find what we couldn't
 
 ### X (Rafan)
 
@@ -291,7 +350,7 @@ A spread with no upside is not a bet with bad odds. It is not a bet at all.
 
 ---
 
-## Day 7 — Sep 3/4 · Publishing the graveyard
+## Day 8 — Sep 4 · Publishing the graveyard
 
 ### X (Rafan)
 
@@ -341,13 +400,32 @@ only until someone reads the code.
 
 ---
 
+## Taglines for the naming post
+
+Whichever name is chosen, drop the matching line into `{{TAGLINE}}`.
+
+| Name | Tagline |
+|---|---|
+| **Brightline** | A bright-line rule admits no judgment. Neither does ours. |
+| **Nullius** | *nullius in verba* — take nobody's word for it. Not even the model's. |
+| **Recusal** | It can step aside. It cannot rule. |
+| **Assay** | Every claim the model makes is tested before it can reach the broker. |
+| **Attest** | Every decision, and every refusal, is on the record. |
+| **Provenance** | Every decision stamped with what it knew, and when. |
+| **Ratchet** | It only ever tightens. |
+
+---
+
 ## Notes on picking the five
 
-- **Day 4 (IV Rank)** and **Day 6 (Kelly crash)** are the strongest. Both are concrete,
+- **Day 4 (IV Rank)** and **Day 7 (Kelly crash)** are the strongest. Both are concrete,
   checkable, and about being wrong — which is what the challenge actually asked for.
-- **Day 5 (cron)** travels furthest outside trading. It's a DevOps story anyone who has
+- **Day 6 (cron)** travels furthest outside trading. It's a DevOps story anyone who has
   written a scheduled job recognises.
 - Day 1 and Day 2 are context. Post them, but don't expect reach.
+- **Day 5 (naming)** is the one to boost if any post gets paid promotion — it is the only
+  one that carries the project's identity, and the five links you submit should not all be
+  anonymous.
 - Don't post rival comparisons. It reads badly and adds nothing.
 - Attach the architecture diagram (`docs/architecture.svg`) to at least one LinkedIn post —
   image posts reach further, and it's genuinely good.
