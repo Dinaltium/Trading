@@ -13,6 +13,7 @@ from alpaca.trading.client import TradingClient
 from apscheduler.schedulers.blocking import BlockingScheduler
 from dotenv import load_dotenv
 
+from src.agent_state import AgentState
 from src.audit_log import push_audit_log, write_exit_record
 from src.live_settings import fetch_live_settings
 from src.orchestrator import run_cycle
@@ -51,6 +52,16 @@ def run_all_cycles(dry_run: bool = True, test_mode: bool = False):
     if settings.may_close_positions:
         exits = manage_open_positions(dry_run=dry_run)
         write_exit_record(exits, dry_run=dry_run)  # closes belong in the audit log, not just stdout
+
+        # Feed realised outcomes into the adaptive restriction streak. Only real closes
+        # count: a dry-run "close" moved no money and produced no evidence about anything,
+        # and letting it extend a loss streak would let a soak test bar a live underlying.
+        if exits.get("ok") and not dry_run:
+            state = AgentState.load()
+            for closed in exits.get("closed") or []:
+                underlying = str(closed.get("spread", "")).split(":")[0]
+                state.record_closed_trade(underlying, float(closed.get("unrealized_pl") or 0.0))
+            state.save()
         if exits.get("ok"):
             for closed in exits.get("closed") or []:
                 print(f"  -> CLOSED {closed['spread']}: {closed['reason']}")

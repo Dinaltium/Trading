@@ -61,6 +61,15 @@ def _kelly_fraction(p_win: float, max_profit: float, max_loss: float) -> float:
     if max_loss <= 0:
         return 0.0
     b = max_profit / max_loss
+    if b <= 0:
+        # A spread with no upside is not a bet with bad odds, it is not a bet at all, and
+        # Kelly is undefined there - f* = (p*b - q)/b divides by b. Reachable in production:
+        # a debit spread quoted at the full width between its strikes has max_profit exactly
+        # zero, which a wide bid/ask at the open produces easily. Previously this raised
+        # ZeroDivisionError out of the risk gate and killed the whole cycle, so a bad quote
+        # took down the tick rather than being declined by it. Found by the property suite,
+        # not by a hand-written case.
+        return 0.0
     q = 1.0 - p_win
     f_star = (p_win * b - q) / b
     return max(0.0, f_star)

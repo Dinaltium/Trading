@@ -54,6 +54,18 @@ execution:
   excluded_expiries:
     - 2026-09-04
 
+adaptive_restriction:
+  # Adapt only toward restriction, never toward more risk. A run of losses on one underlying
+  # is the agent's own evidence that it is reading that name badly; widening exposure on a
+  # winning streak would be the same reasoning run backwards, and a five-day sample cannot
+  # support it. Keyed per underlying on purpose: three losses on one name is evidence about
+  # the name, three losses across four names is evidence about the market and halting
+  # everything on it would be the worst possible response.
+  #
+  # Blocks NEW entries only. Exits are never restricted - a rule that stops the agent opening
+  # a position must not stop it closing one.
+  max_consecutive_losses: 3
+
 exits:
   # Deterministic stop-loss on open spreads, evaluated from broker-reported P&L and the
   # strikes parsed off the OCC symbols. No model is consulted: an LLM has no role in

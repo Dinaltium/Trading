@@ -163,3 +163,26 @@ def test_sizing_never_exceeds_max_loss_per_trade(limits):
     assert result.approved
     risked = result.contracts * SPREAD_ECON["max_loss_per_contract"]
     assert risked <= 100_000.0 * limits["max_loss_per_trade_pct"]
+
+
+def test_a_spread_with_no_upside_is_declined_not_crashed(limits):
+    """max_profit == 0 makes the Kelly payoff ratio zero and f* = (p*b - q)/b undefined.
+    A debit spread quoted at the full width between its strikes has exactly that shape, so
+    a wide bid/ask at the open used to raise ZeroDivisionError out of the risk gate and kill
+    the cycle - a bad quote taking down the tick instead of being refused by it."""
+    from src.risk_gate import AccountState, TradeProposal, evaluate
+
+    proposal = TradeProposal(
+        strategy="bear_put_spread",
+        underlying="SPY",
+        max_profit_per_contract=0.0,
+        max_loss_per_contract=400.0,
+        classifier_win_probability=0.6,
+        iv_rank=50.0,
+        classifier_p_up=0.30,
+    )
+    account = AccountState(
+        equity=100_000.0, open_risk_dollars=0.0, open_underlyings=set(), daily_pnl_pct=0.0
+    )
+    result = evaluate(proposal, account)  # must not raise
+    assert not result.approved

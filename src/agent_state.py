@@ -39,6 +39,11 @@ class AgentState:
     last_cycle_at: Optional[str] = None       # ISO8601 UTC
     last_submission_at: Optional[str] = None
     cycles_recorded: int = 0
+    # Per-underlying loss streak, reset by any winning close. Belongs here rather than being
+    # re-derived from the broker because Alpaca reports open positions, not the sequence of
+    # closed outcomes that produced them - and the agent's own trade history is exactly the
+    # kind of operational state that cannot be re-read from an authoritative source.
+    consecutive_losses_by_underlying: dict = field(default_factory=dict)
 
     # --- persistence ---
 
@@ -76,6 +81,32 @@ class AgentState:
         self.consecutive_execution_failures = 0
         self.last_execution_error = None
         self.last_submission_at = when
+
+    # --- adaptive restriction, persisted across processes -----------------------------
+
+    def record_closed_trade(self, underlying: str, realised_pnl: float) -> None:
+        """A losing close extends that underlying's streak; any win clears it.
+
+        Deliberately keyed per underlying rather than globally: three losses on one name is
+        evidence about that name, while three losses spread across four names is evidence
+        about the market and would halt everything at the worst possible moment."""
+        if not underlying:
+            return
+        streaks = dict(self.consecutive_losses_by_underlying or {})
+        if realised_pnl < 0:
+            streaks[underlying] = streaks.get(underlying, 0) + 1
+        else:
+            streaks.pop(underlying, None)
+        self.consecutive_losses_by_underlying = streaks
+
+    def is_restricted(self, underlying: str, max_consecutive_losses: int = 3) -> bool:
+        """Whether NEW entries in this underlying are barred. Never consulted for exits:
+        a rule that stops the agent opening a position must not also stop it closing one."""
+        return (self.consecutive_losses_by_underlying or {}).get(underlying, 0) >= max_consecutive_losses
+
+    def restriction_detail(self, underlying: str) -> str:
+        n = (self.consecutive_losses_by_underlying or {}).get(underlying, 0)
+        return f"{n} consecutive losing closes on {underlying}"
 
     def reset_breaker(self) -> None:
         self.consecutive_execution_failures = 0

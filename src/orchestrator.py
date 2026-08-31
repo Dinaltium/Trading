@@ -37,7 +37,7 @@ from src.guards import (
     validate_signals,
 )
 from src.model_adapter import call_claude_code_cli, call_with_retry
-from src.risk_gate import AccountState, TradeProposal, evaluate as evaluate_risk
+from src.risk_gate import AccountState, TradeProposal, evaluate as evaluate_risk, load_limits
 from src.signals.azte import compute_trigger
 from src.signals.direction import train_and_predict
 from src.signals.iv_rank import compute_vol_signals
@@ -152,6 +152,29 @@ def run_cycle(
     heartbeat = state.heartbeat(cycle_started_at)
 
     breaker = state.breaker_tripped
+
+    # Adaptive restriction: refuse NEW entries in an underlying the agent has lost on
+    # repeatedly. Checked before any model is called, because consulting one about a name we
+    # have already decided not to trade spends a slice of the cycle's budget to produce a
+    # decision that cannot be acted on. Exits are unaffected - they run in the scheduler,
+    # ahead of this, and in every non-paused mode.
+    restriction_limit = int((load_limits().get("adaptive_restriction") or {}).get("max_consecutive_losses", 3))
+    if state.is_restricted(underlying, restriction_limit):
+        return write_cycle_record(
+            underlying=underlying,
+            signals=None,
+            live_decision=None,
+            shadow_decisions={},
+            risk_gate_verdict={
+                "approved": False,
+                "reason": f"adaptive restriction: {state.restriction_detail(underlying)}; no new entries",
+            },
+            fill_result=None,
+            dry_run=dry_run,
+            account_equity=account_state.equity,
+            live_provider=live_provider,
+            guards={"agent_state": state.as_record()},
+        )
 
     account_state = get_account_state(trading_client)  # fetched once per cycle, always logged —
                                                           # this is the equity-over-time series the dashboard charts

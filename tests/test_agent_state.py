@@ -100,3 +100,65 @@ def test_cycle_counter_increments(tmp_path):
         state.note_cycle(datetime.now(timezone.utc))
         state.save(path)
     assert AgentState.load(path).cycles_recorded == 3
+
+
+# --- adaptive restriction ---------------------------------------------------------------
+# Adapt only toward restriction. A run of losses on one name is the agent's own evidence
+# that it is reading that name badly; widening exposure on a winning streak is the same
+# reasoning run backwards, and five days of data cannot support it.
+
+def test_losing_closes_accumulate_per_underlying():
+    from src.agent_state import AgentState
+
+    s = AgentState()
+    for _ in range(3):
+        s.record_closed_trade("SPY", -120.0)
+    assert s.consecutive_losses_by_underlying["SPY"] == 3
+    assert s.is_restricted("SPY", max_consecutive_losses=3)
+
+
+def test_a_win_clears_the_streak():
+    from src.agent_state import AgentState
+
+    s = AgentState()
+    s.record_closed_trade("SPY", -120.0)
+    s.record_closed_trade("SPY", -80.0)
+    s.record_closed_trade("SPY", 40.0)
+    assert not s.is_restricted("SPY", max_consecutive_losses=3)
+    assert "SPY" not in s.consecutive_losses_by_underlying
+
+
+def test_restriction_does_not_leak_across_underlyings():
+    """Three losses spread over three names is evidence about the market, not about any one
+    name. Halting everything on it would be the worst possible response."""
+    from src.agent_state import AgentState
+
+    s = AgentState()
+    for u in ("SPY", "QQQ", "IWM"):
+        s.record_closed_trade(u, -100.0)
+    for u in ("SPY", "QQQ", "IWM", "AAPL"):
+        assert not s.is_restricted(u, max_consecutive_losses=3)
+
+
+def test_restriction_survives_the_restart_between_cycles(tmp_path):
+    """The agent runs as a fresh process every tick. A streak held in memory would reset to
+    zero before the third loss ever happened - the same defect that made the execution
+    circuit breaker unable to fire."""
+    from src.agent_state import AgentState
+
+    path = tmp_path / "state.json"
+    s = AgentState()
+    for _ in range(3):
+        s.record_closed_trade("AAPL", -50.0)
+    s.save(path)
+
+    reloaded = AgentState.load(path)
+    assert reloaded.is_restricted("AAPL", max_consecutive_losses=3)
+
+
+def test_break_even_close_is_not_a_loss():
+    from src.agent_state import AgentState
+
+    s = AgentState()
+    s.record_closed_trade("SPY", 0.0)
+    assert s.consecutive_losses_by_underlying.get("SPY", 0) == 0
