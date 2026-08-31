@@ -83,3 +83,32 @@ def test_out_of_range_confidence_is_clamped():
 def test_empty_and_none_content():
     assert parse_decision(None).error == "no content returned by provider"
     assert parse_decision("   ").error == "provider returned empty output"
+
+
+# --- deterministic fallback ------------------------------------------------------------
+# A provider outage must not silently become a trading halt. The rulebook is a pure function
+# of two measured signals; it does not need a model to evaluate, and refusing to act on it
+# because an HTTP call failed stops the agent for a reason unrelated to the market.
+
+def test_fallback_can_only_emit_the_rulebook_mandate():
+    """The fallback is strictly narrower than the model's own latitude: it emits the one
+    strategy a model would have been permitted to choose, and cannot invent another."""
+    from src.decision_schema import rulebook_strategy, decision_matches_rulebook
+
+    for iv_rank, p_up, trusted in [
+        (100.0, 0.50, True),    # iron_condor
+        (100.0, 0.4311, False), # bear_put_spread
+        (50.0, 0.60, True),     # bull_call_spread
+        (50.0, 0.50, True),     # cash
+    ]:
+        mandated, _ = rulebook_strategy(iv_rank, p_up, trusted)
+        permitted, _ = decision_matches_rulebook(mandated, iv_rank, p_up, trusted)
+        assert permitted, f"fallback pick {mandated} must survive its own rulebook check"
+
+
+def test_fallback_declines_when_the_rulebook_says_cash():
+    """No model and no mandate means no trade — the fallback must not manufacture one."""
+    from src.decision_schema import rulebook_strategy
+
+    mandated, _ = rulebook_strategy(50.0, 0.50, True)
+    assert mandated == "cash"

@@ -4,7 +4,10 @@
 max_loss_per_trade_pct: 0.02       # ≤2% of account equity per trade
 max_total_open_risk_pct: 0.10      # ≤10% of account equity across all open positions
 daily_drawdown_halt_pct: 0.05      # stop trading for the day past this loss
-max_underlyings_concurrent: 3      # diversify across 2-3 names, not all-in
+max_underlyings_concurrent: 3      # diversify across 2-3 names, not all-in. Deliberately
+                                   # NOT raised alongside the wider universe below: more
+                                   # candidates to choose from is a different thing from more
+                                   # concurrent risk, and only the first is wanted here.
 
 allowed_strategies:
   - bull_call_spread
@@ -17,6 +20,8 @@ kelly_cap_pct: 0.02                 # Kelly-sized risk still capped at max_loss_
 underlyings:
   - SPY
   - QQQ
+  - IWM
+  - AAPL
 
 market_regime_gate:
   # ENFORCED in risk_gate.evaluate(). Until 2026-08-30 this block was dead config: nothing
@@ -33,6 +38,15 @@ market_regime_gate:
 
 execution:
   target_dte_days: 7          # preferred days-to-expiry when picking a chain
+  # Multi-leg spreads priced exactly at the mid frequently do not fill. A rival's public
+  # trade journal shows 4 of 6 live orders returning not_filled at mid across a single
+  # session, which is the same trade as never having proposed them. This cushion crosses
+  # the spread slightly: pay a little above mid on a debit, accept a little below mid on a
+  # credit. 0.02 is per-spread net price in dollars, so $2 per contract at the 100x
+  # multiplier - small against a defined-risk spread's max loss, and the difference between
+  # a fill and a miss. Applied to the limit price only; max profit, max loss and Kelly
+  # sizing are all computed from the true mid, so the cushion can never widen the position.
+  limit_price_cushion: 0.02
   # Expiries the agent must never open into. Sep 4 2026 is the hackathon's own deadline day:
   # the official P&L snapshot is taken at EOD Thursday Sep 3, and lablab confirmed that
   # positions expiring Friday Sep 4 are EXCLUDED from that measurement. A spread expiring

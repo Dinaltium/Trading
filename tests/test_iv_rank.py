@@ -122,3 +122,25 @@ def test_untrusted_iv_withdraws_the_condor_but_keeps_direction():
     assert rulebook_strategy(100.0, 0.50, iv_rank_trusted=True)[0] == "iron_condor"
     assert rulebook_strategy(100.0, 0.4311, iv_rank_trusted=False)[0] == "bear_put_spread"
     assert rulebook_strategy(100.0, 0.60, iv_rank_trusted=False)[0] == "bull_call_spread"
+
+
+def test_absent_iv_rank_still_allows_a_directional_trade():
+    """A newly added underlying has no IV history precisely because it is new. Treating that
+    absence as a reason to refuse every trade kept IWM and AAPL at cash on their first day."""
+    from src.decision_schema import rulebook_strategy
+
+    assert rulebook_strategy(None, 0.4160)[0] == "bear_put_spread"
+    assert rulebook_strategy(None, 0.60)[0] == "bull_call_spread"
+
+
+def test_absent_iv_rank_still_withdraws_the_condor():
+    """No read on whether premium is rich means no basis for selling it."""
+    from src.decision_schema import rulebook_strategy
+
+    assert rulebook_strategy(None, 0.50)[0] == "cash"
+
+
+def test_absent_classifier_is_still_a_full_stop():
+    from src.decision_schema import rulebook_strategy
+
+    assert rulebook_strategy(100.0, None)[0] == "cash"

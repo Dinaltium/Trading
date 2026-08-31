@@ -102,17 +102,24 @@ def rulebook_strategy(
     with no usable history there is no such bet to make, so the condor branch is withdrawn
     and the direction branch, which comes from the classifier and never touches the IV
     window, is left to stand on its own."""
-    if iv_rank is None or p_up is None:
-        return "cash", "insufficient signal data (iv_rank or classifier_p_up unavailable)"
+    if p_up is None:
+        return "cash", "insufficient signal data (classifier_p_up unavailable)"
 
-    elevated_iv = iv_rank >= IV_RANK_HIGH and iv_rank_trusted
+    # A missing iv_rank and an untrusted one are the same fact: no usable read on whether
+    # options are expensive. Both withdraw the IV branch; neither touches direction, which
+    # comes from the classifier and never consults the IV window. Treating absence as a
+    # reason to stop trading entirely is what kept a newly added underlying at cash for its
+    # first hour on the tape - it had no IV history yet precisely because it was new.
+    iv_unusable = iv_rank is None or not iv_rank_trusted
+    elevated_iv = (not iv_unusable) and iv_rank >= IV_RANK_HIGH
     bullish = p_up >= P_UP_BULLISH
     bearish = p_up <= P_UP_BEARISH
     neutral = not bullish and not bearish
 
-    if neutral and not iv_rank_trusted:
+    if neutral and iv_unusable:
+        shown = "unavailable" if iv_rank is None else f"{iv_rank:.1f}"
         return "cash", (
-            f"neutral direction (p_up {p_up:.4f}) and iv_rank {iv_rank:.1f} is not backed by "
+            f"neutral direction (p_up {p_up:.4f}) and iv_rank {shown} is not backed by "
             f"enough history to justify selling premium"
         )
     if elevated_iv and neutral:

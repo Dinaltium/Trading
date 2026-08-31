@@ -232,13 +232,22 @@ def submit_spread_order(trading_client: TradingClient, spread: SpreadOrder, cont
     ]
     # net_price sign convention: positive = pay a debit, negative = receive a credit.
     # Alpaca's multi-leg limit_price is the net price for the whole spread, same sign convention.
+    # Cross the spread slightly rather than resting exactly at the mid. A mid-priced
+    # multi-leg limit often simply does not fill, and an unfilled order is indistinguishable
+    # in the P&L from a trade never proposed. The cushion moves the limit in the direction
+    # that helps it fill and never the other way: pay above mid on a debit, accept below mid
+    # on a credit. See risk_limits.yaml execution.limit_price_cushion.
+    cushion = float(_load_execution_config().get("limit_price_cushion", 0.0))
+    is_debit = spread.net_price >= 0
+    limit_price = abs(spread.net_price) + cushion if is_debit else max(0.01, abs(spread.net_price) - cushion)
+
     request = LimitOrderRequest(
         qty=contracts,
-        side=OrderSide.BUY if spread.net_price >= 0 else OrderSide.SELL,
+        side=OrderSide.BUY if is_debit else OrderSide.SELL,
         type="limit",
         time_in_force=TimeInForce.DAY,
         order_class=OrderClass.MLEG,
-        limit_price=abs(round(spread.net_price, 2)),
+        limit_price=round(limit_price, 2),
         legs=order_legs,
     )
     return trading_client.submit_order(order_data=request)

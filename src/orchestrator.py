@@ -42,7 +42,13 @@ from src.signals.azte import compute_trigger
 from src.signals.direction import train_and_predict
 from src.signals.iv_rank import compute_vol_signals
 
-ALL_HTTP_PROVIDERS = ["groq", "featherless", "mistral", "anthropic"]  # spoken to over HTTP
+# "anthropic" is registered in model_adapter and deliberately NOT in this list. The key
+# authenticates and the workspace resolves; the org's credit balance is not spendable on the
+# API, so every cycle returned 400 "credit balance is too low". Leaving it in would spend a
+# slice of the cycle's 90-second budget on a call that cannot succeed and would write a
+# guaranteed failure into every audit record. Re-add the name here once billing is sorted -
+# the adapter entry, the workspace header and the tests are already in place.
+ALL_HTTP_PROVIDERS = ["groq", "featherless", "mistral"]  # spoken to over HTTP
 CLAUDE_CLI_PROVIDER = "claude_code_cli"                  # spoken to via subprocess, not HTTP
 # claude_code_cli is deliberately NOT in the cycle's provider set. It shells out to the
 # `claude` binary, which exists on a developer laptop and not on the GitHub Actions runner,
@@ -238,6 +244,44 @@ def run_cycle(
     )
     live_decision_warnings = live_parsed.warnings if live_parsed else []
 
+    # --- fallback: an unreachable model must not become an unreachable strategy ----------
+    # The rulebook is a pure function of two measured signals and needs no model to evaluate.
+    # When the live provider fails outright, falling through to cash means a provider outage
+    # silently becomes a trading halt - the agent stops taking the trade its own deterministic
+    # rules mandate, for a reason that has nothing to do with the market. Groq answered 10/10
+    # so far, but a single bad afternoon inside a five-day competition is the whole result.
+    #
+    # This is strictly narrower than what the model is allowed to do. The fallback can only
+    # ever emit the rulebook's own mandate, which is exactly the one strategy a model would
+    # have been permitted to choose; it cannot invent an alternative and it cannot size
+    # anything. Every downstream gate still runs unchanged - the rulebook check it trivially
+    # passes, and then Kelly sizing, the loss caps, the drawdown halt, the premium-selling
+    # halt and reconciliation, none of which consult a model either.
+    #
+    # Faithfulness is skipped deliberately rather than by omission: that guard checks a
+    # model's prose against the signals it was handed, and there is no prose here.
+    live_decision_fallback = False
+    if live_decision is None:
+        mandated, rationale = rulebook_strategy(vol.iv_rank, direction.p_up, vol.iv_rank_trusted)
+        if mandated != "cash":
+            live_decision = {
+                "selected_strategy": mandated,
+                "confidence_score": 0.0,  # not a model's confidence; nothing here is a model
+                "reasoning": (
+                    f"DETERMINISTIC FALLBACK - no model reached. Rulebook mandates {mandated}: "
+                    f"{rationale}. No LLM contributed to this decision."
+                ),
+                "approved_for_execution": True,
+            }
+            live_decision_fallback = True
+            # Surfaced in the record, not just in the reasoning string: a cycle that traded
+            # without a model must be countable afterwards, not something a reader has to
+            # notice by reading prose.
+            live_decision_warnings = list(live_decision_warnings or []) + [
+                f"deterministic fallback: live provider failed ({live_decision_error}); "
+                f"executed rulebook mandate {mandated} with no model in the loop"
+            ]
+
     # --- shadow decisions, never executed — every provider except whichever is live ---
     shadow_decisions = {}
     for provider in ALL_PROVIDERS:
@@ -258,7 +302,14 @@ def run_cycle(
     # TradeTrap guard 2 of 4 — strategy formulation. A model that quotes a signal value it
     # was never given has fabricated its own input; its conclusion is unsupported even when
     # the strategy happens to be the one the rulebook mandates.
-    faithfulness = check_faithfulness((live_decision or {}).get("reasoning"), signals)
+    # Skipped for the deterministic fallback: this guard exists to catch a model quoting a
+    # signal value it was never given, and the fallback's text is generated from those very
+    # signals rather than reported by anything.
+    faithfulness = (
+        check_faithfulness(None, signals)
+        if live_decision_fallback
+        else check_faithfulness((live_decision or {}).get("reasoning"), signals)
+    )
 
     # TradeTrap guard 3 of 4 — cross-validation across the four independent models.
     agreement = cross_model_agreement((live_decision or {}).get("selected_strategy"), shadow_decisions)

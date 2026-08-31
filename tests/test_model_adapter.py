@@ -72,12 +72,17 @@ def test_permanent_failure_is_not_retried(monkeypatch):
     assert len(calls) == 1
 
 
-def test_claude_cli_is_out_of_the_cycle_provider_set():
-    """It cannot run on the CI runner, so counting it produced four names and three answers."""
+def test_only_providers_that_can_answer_are_in_the_cycle_set():
+    """Two names were being called every cycle and could never succeed: claude_code_cli has
+    no binary on the CI runner, and anthropic 400s because the org's credits are not
+    spendable on the API. Both stay registered and tested so re-enabling is a one-line
+    change, but neither should burn part of the cycle's 90-second budget meanwhile."""
     from src.orchestrator import ALL_PROVIDERS, CLAUDE_CLI_PROVIDER
 
     assert CLAUDE_CLI_PROVIDER not in ALL_PROVIDERS
-    assert ALL_PROVIDERS == ["groq", "featherless", "mistral", "anthropic"]
+    assert "anthropic" not in ALL_PROVIDERS
+    assert ALL_PROVIDERS == ["groq", "featherless", "mistral"]
+    assert "anthropic" in ma.PROVIDERS, "adapter entry stays, ready to re-enable"
 
 
 def test_workspace_header_sent_only_when_configured(monkeypatch):
