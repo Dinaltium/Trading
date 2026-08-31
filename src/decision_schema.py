@@ -88,17 +88,33 @@ classifier probability you were given in the input signals, not from anything yo
 #      a claim about prompt compliance. Enforced in risk_gate.evaluate().
 
 
-def rulebook_strategy(iv_rank: Optional[float], p_up: Optional[float]) -> tuple[str, str]:
+def rulebook_strategy(
+    iv_rank: Optional[float],
+    p_up: Optional[float],
+    iv_rank_trusted: bool = True,
+) -> tuple[str, str]:
     """The strategy the rules mandate for these signals, plus the reason. Pure function:
-    no model, no randomness, no I/O. Returns (strategy, rationale)."""
+    no model, no randomness, no I/O. Returns (strategy, rationale).
+
+    iv_rank_trusted defaults True so callers that genuinely have no view on window depth
+    behave as before. Passing it False does NOT route to cash - it demotes the IV branch
+    only. Selling premium is a bet that options are expensive relative to their own history;
+    with no usable history there is no such bet to make, so the condor branch is withdrawn
+    and the direction branch, which comes from the classifier and never touches the IV
+    window, is left to stand on its own."""
     if iv_rank is None or p_up is None:
         return "cash", "insufficient signal data (iv_rank or classifier_p_up unavailable)"
 
-    elevated_iv = iv_rank >= IV_RANK_HIGH
+    elevated_iv = iv_rank >= IV_RANK_HIGH and iv_rank_trusted
     bullish = p_up >= P_UP_BULLISH
     bearish = p_up <= P_UP_BEARISH
     neutral = not bullish and not bearish
 
+    if neutral and not iv_rank_trusted:
+        return "cash", (
+            f"neutral direction (p_up {p_up:.4f}) and iv_rank {iv_rank:.1f} is not backed by "
+            f"enough history to justify selling premium"
+        )
     if elevated_iv and neutral:
         # Premium is rich and there is no directional edge to express - sell both sides
         # with defined risk.
@@ -112,10 +128,10 @@ def rulebook_strategy(iv_rank: Optional[float], p_up: Optional[float]) -> tuple[
     return "cash", f"neutral direction (p_up {p_up:.4f}) and iv_rank {iv_rank:.1f} < {IV_RANK_HIGH}"
 
 
-def decision_matches_rulebook(selected, iv_rank, p_up) -> tuple[bool, str]:
+def decision_matches_rulebook(selected, iv_rank, p_up, iv_rank_trusted: bool = True) -> tuple[bool, str]:
     """Whether a model's pick is permitted. Cash is always permitted - refusing to trade is
     never off-rulebook. Anything else must equal the mandated strategy."""
-    mandated, rationale = rulebook_strategy(iv_rank, p_up)
+    mandated, rationale = rulebook_strategy(iv_rank, p_up, iv_rank_trusted)
     if selected == "cash":
         return True, f"abstained; rulebook mandated {mandated} ({rationale})"
     if selected == mandated:

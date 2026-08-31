@@ -50,6 +50,8 @@ class VolSignals:
     iv_percentile: Optional[float]
     iv_history_samples: int           # number of logged CYCLES backing iv_rank/iv_percentile.
                                       # Not days - at a 15-min cadence ~26 samples is one trading day.
+    iv_history_days: int              # distinct calendar dates in that window.
+    iv_rank_trusted: bool             # whether the window is deep enough to reason from.
 
 
 def get_current_atm_iv(opt_client: OptionHistoricalDataClient, underlying: str, current_price: float) -> Optional[float]:
@@ -100,13 +102,41 @@ def log_iv_snapshot(underlying: str, iv: float, log_path: Optional[Path] = None)
         writer.writerow([datetime.utcnow().isoformat(), underlying, iv])
 
 
+# A rank is a statement about "recent history". Two ways that statement can be hollow:
+# too few observations, or plenty of observations that all landed inside a single session.
+# The window that pinned iv_rank to 100 for four days was the second kind - 14 samples,
+# every one of them stamped 2026-08-28. Depth in samples alone would have called it fine.
+MIN_TRUSTED_SAMPLES = 30    # ~1.2 trading days at the 15-minute cadence
+MIN_TRUSTED_DAYS = 2        # a single session's spread is not a history
+
+
+def history_depth(underlying: str, log_path: Optional[Path] = None) -> tuple[int, int]:
+    """Returns (sample_count, distinct_calendar_days) for the logged IV window."""
+    log_path = log_path or LOG_DIR / f"iv_history_{underlying}.csv"
+    if not log_path.exists():
+        return 0, 0
+    with open(log_path, "r") as f:
+        rows = list(csv.DictReader(f))
+    days = {r["timestamp"][:10] for r in rows if r.get("timestamp")}
+    return len(rows), len(days)
+
+
+def iv_rank_is_trusted(samples: int, days: int) -> bool:
+    return samples >= MIN_TRUSTED_SAMPLES and days >= MIN_TRUSTED_DAYS
+
+
 def iv_rank_from_log(underlying: str, current_iv: float, log_path: Optional[Path] = None) -> tuple[Optional[float], Optional[float], int]:
     """Returns (iv_rank, iv_percentile, sample_size) ranking current_iv against the PRIOR
     history on disk. Call this before log_iv_snapshot(), never after: if the current
     observation is already in the window, any new high scores exactly 100.0 and any new
     low exactly 0.0, regardless of what the market actually did.
 
-    Returns (None, None, n) if fewer than 5 prior data points - too thin to mean anything."""
+    Returns (None, None, n) if fewer than 5 prior data points - too thin to mean anything.
+
+    Note the 5 here is a floor for producing a number at all, NOT a threshold for believing
+    it. A rank computed from a handful of samples is still returned, because returning None
+    routes the rulebook straight to cash and stops the agent trading entirely. Whether the
+    number is trustworthy is a separate question, answered by history_depth() below."""
     log_path = log_path or LOG_DIR / f"iv_history_{underlying}.csv"
     if not log_path.exists():
         return None, None, 0
@@ -151,6 +181,7 @@ def compute_vol_signals(
 
     # Rank first, against prior history only - then append. Order matters, see iv_rank_from_log.
     iv_rank, iv_pct, n = iv_rank_from_log(underlying, current_iv)
+    samples, days = history_depth(underlying)
     if record_history:
         log_iv_snapshot(underlying, current_iv)
 
@@ -162,6 +193,8 @@ def compute_vol_signals(
         iv_rank=iv_rank,
         iv_percentile=iv_pct,
         iv_history_samples=n,
+        iv_history_days=days,
+        iv_rank_trusted=iv_rank_is_trusted(samples, days),
     )
 
 

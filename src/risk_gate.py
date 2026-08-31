@@ -30,6 +30,10 @@ class TradeProposal:
     classifier_p_up: Optional[float] = None  # Passed separately from classifier_win_probability so the
                                              # gate re-derives the mandated strategy from raw signals rather
                                              # than trusting the strategy name it was handed.
+    iv_rank_trusted: bool = True     # whether iv_rank rests on a deep enough window to reason from.
+                                     # Carried here so the gate's independent re-derivation uses the same
+                                     # inputs the rulebook did; without it the gate would mandate condors
+                                     # off a rank the orchestrator had already ruled untrustworthy.
 
 
 @dataclass
@@ -75,7 +79,7 @@ def evaluate(proposal: TradeProposal, account: AccountState, limits: Optional[di
     # This is what makes "the LLM cannot manufacture a trade" a code property.
     if regime.get("enforce_rulebook", True):
         permitted, detail = decision_matches_rulebook(
-            proposal.strategy, proposal.iv_rank, proposal.classifier_p_up
+            proposal.strategy, proposal.iv_rank, proposal.classifier_p_up, proposal.iv_rank_trusted
         )
         if not permitted:
             return GateResult(False, detail)

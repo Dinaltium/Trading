@@ -80,7 +80,7 @@ def call_provider(provider: str, payload: dict):
     return call_openai_compatible(provider, SYSTEM_PROMPT, payload)
 
 
-def _score_against_rulebook(decision: Optional[dict], iv_rank, p_up) -> Optional[dict]:
+def _score_against_rulebook(decision: Optional[dict], iv_rank, p_up, iv_rank_trusted: bool = True) -> Optional[dict]:
     """Every model's pick, live and shadow alike, scored against the same deterministic
     rulebook. This is the benchmark payload: across the competition it answers "which model
     follows the rules, and which one drifts" with counted evidence instead of impressions.
@@ -89,8 +89,8 @@ def _score_against_rulebook(decision: Optional[dict], iv_rank, p_up) -> Optional
     if not decision:
         return None
     selected = decision.get("selected_strategy")
-    permitted, detail = decision_matches_rulebook(selected, iv_rank, p_up)
-    mandated, _ = rulebook_strategy(iv_rank, p_up)
+    permitted, detail = decision_matches_rulebook(selected, iv_rank, p_up, iv_rank_trusted)
+    mandated, _ = rulebook_strategy(iv_rank, p_up, iv_rank_trusted)
     return {
         "selected": selected,
         "rulebook_mandated": mandated,
@@ -174,8 +174,18 @@ def run_cycle(
         "iv_rank": vol.iv_rank,
         "iv_percentile": vol.iv_percentile,
         "iv_history_samples": vol.iv_history_samples,  # cycles, not days - see signals/iv_rank.py
+        "iv_history_days": vol.iv_history_days,
+        "iv_rank_trusted": vol.iv_rank_trusted,
         "vrp": vol.vrp,
-        "market_regime": "HIGH_VOLATILITY" if (vol.iv_rank or 0) > 80 else "NORMAL_VOLATILITY",
+        # Regime is gated on the same trust flag. Calling a 14-sample, single-day window
+        # HIGH_VOLATILITY put that phrase in front of four models and into the audit log for
+        # four days, on the strength of a number that only meant "today is the highest of the
+        # few hours we have ever measured".
+        "market_regime": (
+            "HIGH_VOLATILITY"
+            if vol.iv_rank_trusted and (vol.iv_rank or 0) > 80
+            else "NORMAL_VOLATILITY"
+        ),
         "days_to_earnings": None,  # N/A for SPY/QQQ index ETFs, see blueprint item 3
         # Temporal provenance, per Look-Ahead-Bench (arXiv:2601.13770). The benchmark's
         # finding is that an LLM scored on historical data may be reciting memorised outcomes
@@ -230,7 +240,7 @@ def run_cycle(
         if provider == live_provider:
             continue
         entry = _shadow_entry(call_provider(provider, payload))
-        entry["rulebook"] = _score_against_rulebook(entry["decision"], vol.iv_rank, direction.p_up)
+        entry["rulebook"] = _score_against_rulebook(entry["decision"], vol.iv_rank, direction.p_up, vol.iv_rank_trusted)
         shadow_decisions[provider] = entry
 
     # --- risk gate + execution, live decision only ---
@@ -270,6 +280,7 @@ def run_cycle(
                 # than trusting the strategy name the model handed it.
                 iv_rank=vol.iv_rank,
                 classifier_p_up=direction.p_up,
+                iv_rank_trusted=vol.iv_rank_trusted,
             )
             gate_result = evaluate_risk(proposal, account_state)
             risk_verdict = {"approved": gate_result.approved, "reason": gate_result.reason, "contracts": gate_result.contracts}
@@ -325,7 +336,7 @@ def run_cycle(
                         state.record_execution_failure(str(e))
                     fill_result = {"submitted": False, "via": "alpaca_cli", "error": str(e)}
 
-    live_rulebook = _score_against_rulebook(live_decision, vol.iv_rank, direction.p_up)
+    live_rulebook = _score_against_rulebook(live_decision, vol.iv_rank, direction.p_up, vol.iv_rank_trusted)
 
     guards = {
         "signals": signal_guard.as_record(),

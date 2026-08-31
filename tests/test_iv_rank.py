@@ -81,3 +81,44 @@ def test_log_snapshot_appends_one_row(tmp_path):
     with open(path) as f:
         rows = list(csv.DictReader(f))
     assert [r["atm_iv"] for r in rows] == ["0.11", "0.12"]
+
+
+# --- IV-window trust -------------------------------------------------------------------
+# The window that pinned iv_rank to 100 for four days held 14 samples, every one stamped
+# 2026-08-28. Sample depth alone would have passed it; the day spread is what catches it.
+
+def test_single_day_window_is_not_trusted_however_many_samples():
+    from src.signals.iv_rank import iv_rank_is_trusted
+    assert not iv_rank_is_trusted(samples=200, days=1)
+
+
+def test_thin_window_is_not_trusted_however_many_days():
+    from src.signals.iv_rank import iv_rank_is_trusted
+    assert not iv_rank_is_trusted(samples=6, days=4)
+
+
+def test_deep_multi_day_window_is_trusted():
+    from src.signals.iv_rank import iv_rank_is_trusted
+    assert iv_rank_is_trusted(samples=30, days=2)
+
+
+def test_history_depth_counts_distinct_days(tmp_path):
+    from src.signals.iv_rank import history_depth
+    p = tmp_path / "iv_history_TEST.csv"
+    p.write_text(
+        "timestamp,underlying,atm_iv\n"
+        "2026-08-28T16:00:00,TEST,0.08\n"
+        "2026-08-28T16:15:00,TEST,0.09\n"
+        "2026-08-29T16:00:00,TEST,0.07\n"
+    )
+    assert history_depth("TEST", log_path=p) == (3, 2)
+
+
+def test_untrusted_iv_withdraws_the_condor_but_keeps_direction():
+    """An untrusted rank must not route everything to cash — that stops the agent trading.
+    It demotes the IV branch only; the classifier-driven direction branch still stands."""
+    from src.decision_schema import rulebook_strategy
+    assert rulebook_strategy(100.0, 0.50, iv_rank_trusted=False)[0] == "cash"
+    assert rulebook_strategy(100.0, 0.50, iv_rank_trusted=True)[0] == "iron_condor"
+    assert rulebook_strategy(100.0, 0.4311, iv_rank_trusted=False)[0] == "bear_put_spread"
+    assert rulebook_strategy(100.0, 0.60, iv_rank_trusted=False)[0] == "bull_call_spread"
