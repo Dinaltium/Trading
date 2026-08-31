@@ -33,6 +33,10 @@ on:
       max_minutes:
         description: "session mode only: minutes before the job ends itself"
         default: "60"
+      live:
+        description: "place real paper orders? scheduled runs always do; this is for manual runs"
+        type: boolean
+        default: false
 
 # Two overlapping sessions would double-submit cycles and race each other's audit-log
 # pushes. Queue instead of running concurrently; never cancel a run that is mid-cycle.
@@ -96,13 +100,17 @@ jobs:
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           FEATHER_API_KEY: ${{ secrets.FEATHER_API_KEY }}
           MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
-        # No --live flag: this runs dry_run=True (real signals, real AI decisions, real
-        # risk-gate evaluation, real IV-history recording - nothing skipped) but does not
-        # submit real paper orders. Add --live once the fresh competition account is ready
-        # and you deliberately want this workflow to place real trades.
+        # Scheduled runs place real orders on the paper account. Everything upstream of
+        # submission was already real without --live -- live signals, live model calls, a
+        # real risk-gate verdict -- and all of it was being computed and thrown away: one
+        # order had reached the broker in five days while the gate approved ~10 contracts a
+        # cycle. P&L is the first judging criterion and it cannot be earned in dry_run.
         #
-        # The 13:25 cron gets the long budget, the 18:55 cron the short tail, and a manual
-        # dispatch defaults to a single cycle so smoke-testing never starts a 5-hour job.
+        # Manual dispatch stays dry unless live is ticked, so a smoke test cannot trade.
+        # The safety properties below --live are unchanged and all deterministic: defined-risk
+        # spreads only, <=2% equity per trade, the 5% daily drawdown halt, and the
+        # out-of-process `alpaca doctor` paper-endpoint check that runs before any order is
+        # built. See src/alpaca_cli.py.
         run: |
           if [ "${{ github.event_name }}" = "schedule" ]; then
             if [ "${{ github.event.schedule }}" = "25 13 * * 1-5" ]; then
@@ -110,9 +118,13 @@ jobs:
             else
               BUDGET=90
             fi
-            python -m src.scheduler --session --max-minutes "$BUDGET"
-          elif [ "${{ inputs.mode }}" = "session" ]; then
-            python -m src.scheduler --session --max-minutes "${{ inputs.max_minutes }}"
+            python -m src.scheduler --session --max-minutes "$BUDGET" --live
           else
-            python -m src.scheduler --once
+            LIVE=""
+            if [ "${{ inputs.live }}" = "true" ]; then LIVE="--live"; fi
+            if [ "${{ inputs.mode }}" = "session" ]; then
+              python -m src.scheduler --session --max-minutes "${{ inputs.max_minutes }}" $LIVE
+            else
+              python -m src.scheduler --once $LIVE
+            fi
           fi
