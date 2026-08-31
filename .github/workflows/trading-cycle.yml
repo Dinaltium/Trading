@@ -4,14 +4,41 @@ name: Trading cycle
 # the system "always on" — judges can watch it execute live in the Actions tab below,
 # with full printed output, whether or not anyone's computer is open.
 #
-# Every 15 minutes, weekdays, spanning US market hours with buffer either side (13:00-21:00
-# UTC covers 9:30am-4pm ET across both EDT and EST). The script itself checks Alpaca's own
-# market clock and skips cleanly outside actual trading hours - this schedule is just an
-# outer bound so we're not burning CI minutes at 3am.
+# The cadence is driven from INSIDE the job, not by the cron. The previous version asked
+# for a firing every 15 minutes (`*/15 13-20 * * 1-5`); across Aug 29 and Aug 31 that
+# schedule was due ~36 times and fired zero times. GitHub explicitly deprioritises
+# short-interval schedules under load, so betting the whole trading day on 26 separate
+# cron events landing is a bet that already failed once.
+#
+# Instead: two firings a day, each starting a process that drives its own 15-minute loop
+# (`src.scheduler --session`). One landing cron now covers a half-session. Each job stays
+# under the 6h GitHub-hosted job ceiling and exits green at the closing bell.
+#
+#   13:25 UTC  ->  330 min budget  ->  covers 09:30-14:55 ET (open through mid-afternoon)
+#   18:55 UTC  ->   90 min budget  ->  covers 14:55-16:00 ET, self-exits at the close
+#
+# Both are weekdays-only; the script also checks Alpaca's own market clock and skips
+# cleanly outside real trading hours, so holidays and early closes need no bookkeeping.
 on:
   schedule:
-    - cron: "*/15 13-20 * * 1-5"
-  workflow_dispatch: {}  # lets you trigger one cycle manually from the Actions tab, anytime
+    - cron: "25 13 * * 1-5"
+    - cron: "55 18 * * 1-5"
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "once = a single cycle (safe smoke test) | session = run the loop"
+        type: choice
+        options: [once, session]
+        default: once
+      max_minutes:
+        description: "session mode only: minutes before the job ends itself"
+        default: "60"
+
+# Two overlapping sessions would double-submit cycles and race each other's audit-log
+# pushes. Queue instead of running concurrently; never cancel a run that is mid-cycle.
+concurrency:
+  group: trading-session
+  cancel-in-progress: false
 
 permissions:
   contents: write  # needed so the run can commit+push logs/audit_log.jsonl and config/live_settings.json reads
@@ -19,7 +46,9 @@ permissions:
 jobs:
   run-cycle:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    # Must exceed the largest --max-minutes budget (330) plus setup, or the runner kills the
+    # session mid-day and the job shows red. 350 still sits under GitHub's 6h hard ceiling.
+    timeout-minutes: 350
     steps:
       - uses: actions/checkout@v4
         with:
@@ -60,7 +89,7 @@ jobs:
           git config user.name "trading-cycle-bot"
           git config user.email "actions@users.noreply.github.com"
 
-      - name: Run one trading cycle
+      - name: Run the trading loop
         env:
           ALPACA_API_KEY: ${{ secrets.ALPACA_API_KEY }}
           ALPACA_SECRET_KEY: ${{ secrets.ALPACA_SECRET_KEY }}
@@ -68,7 +97,22 @@ jobs:
           FEATHER_API_KEY: ${{ secrets.FEATHER_API_KEY }}
           MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
         # No --live flag: this runs dry_run=True (real signals, real AI decisions, real
-        # risk-gate evaluation - nothing skipped) but does not submit real paper orders.
-        # Add --live once the fresh competition account is ready and you deliberately
-        # want this workflow to place real trades.
-        run: python -m src.scheduler --once
+        # risk-gate evaluation, real IV-history recording - nothing skipped) but does not
+        # submit real paper orders. Add --live once the fresh competition account is ready
+        # and you deliberately want this workflow to place real trades.
+        #
+        # The 13:25 cron gets the long budget, the 18:55 cron the short tail, and a manual
+        # dispatch defaults to a single cycle so smoke-testing never starts a 5-hour job.
+        run: |
+          if [ "${{ github.event_name }}" = "schedule" ]; then
+            if [ "${{ github.event.schedule }}" = "25 13 * * 1-5" ]; then
+              BUDGET=330
+            else
+              BUDGET=90
+            fi
+            python -m src.scheduler --session --max-minutes "$BUDGET"
+          elif [ "${{ inputs.mode }}" = "session" ]; then
+            python -m src.scheduler --session --max-minutes "${{ inputs.max_minutes }}"
+          else
+            python -m src.scheduler --once
+          fi

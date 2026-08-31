@@ -94,6 +94,57 @@ def run_all_cycles(dry_run: bool = True, test_mode: bool = False):
         print(f"  -> audit log pushed to GitHub: {pushed}")
 
 
+def start_session(
+    dry_run: bool = True,
+    interval_minutes: int = INTERVAL_MINUTES,
+    max_minutes: int = 330,
+):
+    """One process per market session, instead of one CI job per cycle.
+
+    GitHub's scheduler drops short-interval crons under load — a `*/15` schedule asked for
+    ~36 firings across Aug 29 and Aug 31 and delivered zero. Depending on 26 separate cron
+    events landing every day is a bet we lost. This mode needs exactly ONE of them to land:
+    the job wakes up, then drives the 15-minute cadence itself for the rest of the session.
+
+    Shuts down on whichever comes first:
+      - the market has been open and is now closed (normal end of day), or
+      - max_minutes elapsed — kept under the 6h GitHub-hosted job ceiling so the run ends
+        green rather than being killed by the runner and showing a red X to judges.
+    """
+    scheduler = BlockingScheduler()
+    started_at = datetime.now()
+    seen_open = False
+
+    def tick():
+        nonlocal seen_open
+
+        elapsed = (datetime.now() - started_at).total_seconds() / 60
+        if elapsed >= max_minutes:
+            print(f"[{datetime.now().isoformat()}] session budget of {max_minutes}min reached, shutting down cleanly")
+            scheduler.shutdown(wait=False)
+            return
+
+        load_dotenv(override=True)
+        client = TradingClient(os.getenv("ALPACA_API_KEY"), os.getenv("ALPACA_SECRET_KEY"), paper=True)
+        if market_is_open(client):
+            seen_open = True
+        elif seen_open:
+            # Only exit on a close we actually traded through. A job that starts a few minutes
+            # before the bell must keep polling, not mistake "not open yet" for "day over".
+            print(f"[{datetime.now().isoformat()}] market closed after an open session, shutting down")
+            scheduler.shutdown(wait=False)
+            return
+
+        run_all_cycles(dry_run=dry_run, test_mode=False)
+
+    scheduler.add_job(tick, "interval", minutes=interval_minutes, next_run_time=datetime.now())
+    print(f"session runner starting: every {interval_minutes}min, dry_run={dry_run}, budget={max_minutes}min")
+    try:
+        scheduler.start()
+    except (KeyboardInterrupt, SystemExit):
+        print("session runner stopped")
+
+
 def start(dry_run: bool = True, test_mode: bool = False, interval_minutes: int = INTERVAL_MINUTES):
     scheduler = BlockingScheduler()
     scheduler.add_job(
@@ -116,11 +167,19 @@ if __name__ == "__main__":
     test_mode = "--test-mode" in sys.argv
     dry_run = "--live" not in sys.argv  # default safe: dry_run=True unless --live is explicit
 
+    def _flag_value(name: str, default: int) -> int:
+        if name not in sys.argv:
+            return default
+        return int(sys.argv[sys.argv.index(name) + 1])
+
     if "--once" in sys.argv:
-        # single-shot mode: run exactly one tick and exit. This is what GitHub Actions
-        # calls on its own 15-min cron — the recurrence lives in the workflow schedule,
-        # not in a long-running process, so this doesn't need your laptop open at all.
+        # single-shot mode: run exactly one tick and exit. Kept for manual triggers and
+        # local debugging. It is no longer how the workflow drives the day — see --session.
         run_all_cycles(dry_run=dry_run, test_mode=test_mode)
+    elif "--session" in sys.argv:
+        # session mode: one CI job covers a whole market session, driving the 15-min cadence
+        # itself. Depends on one cron firing per half-session rather than 26 per day.
+        start_session(dry_run=dry_run, max_minutes=_flag_value("--max-minutes", 330))
     else:
         # long-running local mode (BlockingScheduler) — still usable for local dev/testing.
         start(dry_run=dry_run, test_mode=test_mode)

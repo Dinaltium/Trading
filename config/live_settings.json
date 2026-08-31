@@ -4,7 +4,7 @@
     "SPY",
     "QQQ"
   ],
-  "updated_at": "2026-08-30T00:00:00+00:00",
-  "updated_by": "manual-pause",
-  "trading_mode": "paused"
+  "updated_at": "2026-08-31T16:05:00+00:00",
+  "updated_by": "unpause-for-session-runner",
+  "trading_mode": "running"
 }
