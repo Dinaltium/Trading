@@ -78,3 +78,15 @@ def test_claude_cli_is_out_of_the_cycle_provider_set():
 
     assert CLAUDE_CLI_PROVIDER not in ALL_PROVIDERS
     assert ALL_PROVIDERS == ["groq", "featherless", "mistral", "anthropic"]
+
+
+def test_workspace_header_sent_only_when_configured(monkeypatch):
+    """An identity-linked Anthropic key 400s without the workspace id; a plain workspace key
+    needs no header at all. Sending it conditionally covers both without a code change."""
+    monkeypatch.delenv("ANTHROPIC_WORKSPACE_ID", raising=False)
+    assert ma._extra_headers("anthropic") is None
+    assert ma._extra_headers("groq") is None
+
+    monkeypatch.setenv("ANTHROPIC_WORKSPACE_ID", "wrkspc_test")
+    assert ma._extra_headers("anthropic") == {"anthropic-workspace-id": "wrkspc_test"}
+    assert ma._extra_headers("groq") is None

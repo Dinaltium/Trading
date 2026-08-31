@@ -57,6 +57,25 @@ RETRYABLE_ERROR_MARKERS = (
 )
 
 
+# Anthropic rejects an identity-linked API key with 400 invalid_request_error unless the
+# request names the workspace it acts in. A key issued under an organisation's workspace can
+# be either kind and the error only appears at call time, so the header is sent when the id
+# is configured and omitted when it is not - that way a plain workspace key needs no config
+# and an identity-linked one needs one secret rather than a code change.
+PROVIDER_HEADER_ENV = {
+    "anthropic": ("anthropic-workspace-id", "ANTHROPIC_WORKSPACE_ID"),
+}
+
+
+def _extra_headers(provider: str) -> Optional[dict]:
+    entry = PROVIDER_HEADER_ENV.get(provider)
+    if not entry:
+        return None
+    header_name, env_var = entry
+    value = os.getenv(env_var)
+    return {header_name: value} if value else None
+
+
 def _is_retryable(error: Optional[str]) -> bool:
     if not error:
         return False
@@ -108,7 +127,7 @@ def call_openai_compatible(
         return ModelCallResult(provider, ok=False, error=f"{env_var} not set in environment")
 
     try:
-        client = OpenAI(api_key=key, base_url=base_url)
+        client = OpenAI(api_key=key, base_url=base_url, default_headers=_extra_headers(provider))
         resp = client.chat.completions.create(
             model=model or default_model,
             messages=[

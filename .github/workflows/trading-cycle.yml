@@ -101,6 +101,7 @@ jobs:
           FEATHER_API_KEY: ${{ secrets.FEATHER_API_KEY }}
           MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          ANTHROPIC_WORKSPACE_ID: ${{ secrets.ANTHROPIC_WORKSPACE_ID }}
         # Scheduled runs place real orders on the paper account. Everything upstream of
         # submission was already real without --live -- live signals, live model calls, a
         # real risk-gate verdict -- and all of it was being computed and thrown away: one
