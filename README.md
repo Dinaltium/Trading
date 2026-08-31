@@ -3,7 +3,7 @@
 Autonomous AI options-trading agent built for the [Alpaca AI Trading Agents Hackathon](https://lablab.ai/ai-hackathons/alpaca-ai-trading-agents-hackathon) (lablab.ai × Alpaca, Aug 28–Sep 4, 2026), Options Alpha track.
 
 **Live dashboard:** https://alpaca-trade-intelli.vercel.app (public, read-only)
-**Deeper docs:** [`docs/graveyard.md`](docs/graveyard.md) (every defect this agent had, and what now catches it) · [`docs/playbook.html`](docs/playbook.html) (full architecture walkthrough) · [`docs/markets101.html`](docs/markets101.html) (options/markets basics, no finance background assumed) · [`docs/architecture.svg`](docs/architecture.svg) (one-page system diagram)
+**Deeper docs:** [`docs/handover.md`](docs/handover.md) (setup + how to run it) · [`docs/graveyard.md`](docs/graveyard.md) (every defect this agent had, and what now catches it) · [`docs/playbook.html`](docs/playbook.html) (full architecture walkthrough) · [`docs/markets101.html`](docs/markets101.html) (options/markets basics, no finance background assumed) · [`docs/architecture.svg`](docs/architecture.svg) (one-page system diagram)
 
 ---
 
