@@ -36,15 +36,19 @@ from src.guards import (
     reconcile_positions,
     validate_signals,
 )
-from src.model_adapter import call_claude_code_cli, call_openai_compatible
+from src.model_adapter import call_claude_code_cli, call_with_retry
 from src.risk_gate import AccountState, TradeProposal, evaluate as evaluate_risk
 from src.signals.azte import compute_trigger
 from src.signals.direction import train_and_predict
 from src.signals.iv_rank import compute_vol_signals
 
-ALL_HTTP_PROVIDERS = ["groq", "featherless", "mistral"]  # spoken to over HTTP
+ALL_HTTP_PROVIDERS = ["groq", "featherless", "mistral", "anthropic"]  # spoken to over HTTP
 CLAUDE_CLI_PROVIDER = "claude_code_cli"                  # spoken to via subprocess, not HTTP
-ALL_PROVIDERS = ALL_HTTP_PROVIDERS + [CLAUDE_CLI_PROVIDER]
+# claude_code_cli is deliberately NOT in the cycle's provider set. It shells out to the
+# `claude` binary, which exists on a developer laptop and not on the GitHub Actions runner,
+# so unattended cycles recorded four providers and got three answers. Claude now reaches the
+# benchmark over HTTP as "anthropic". The subprocess wrapper stays for local use.
+ALL_PROVIDERS = list(ALL_HTTP_PROVIDERS)
 # Any of the four may be the live one — configured in /admin, see src/live_settings.py.
 # Whichever is live executes; the remaining three run as shadows in the same cycle.
 
@@ -77,7 +81,7 @@ def call_provider(provider: str, payload: dict):
     Keeping the dispatch here means live vs shadow is decided purely by configured name."""
     if provider == CLAUDE_CLI_PROVIDER:
         return call_claude_code_cli(SYSTEM_PROMPT, payload)
-    return call_openai_compatible(provider, SYSTEM_PROMPT, payload)
+    return call_with_retry(provider, SYSTEM_PROMPT, payload)
 
 
 def _score_against_rulebook(decision: Optional[dict], iv_rank, p_up, iv_rank_trusted: bool = True) -> Optional[dict]:

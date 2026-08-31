@@ -25,7 +25,7 @@ from typing import Optional
 import requests
 
 RAW_URL = "https://raw.githubusercontent.com/Dinaltium/Trading/main/config/live_settings.json"
-ALLOWED_LIVE_PROVIDERS = {"groq", "featherless", "mistral", "claude_code_cli"}
+ALLOWED_LIVE_PROVIDERS = {"groq", "featherless", "mistral", "anthropic", "claude_code_cli"}
 # claude_code_cli is selectable but carries a real caveat: it shells out to the `claude`
 # binary, which exists on a developer laptop and NOT on the GitHub Actions runner. Selected
 # there, every cycle returns "'claude' CLI not found on PATH", no decision is produced and

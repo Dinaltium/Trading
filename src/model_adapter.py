@@ -29,7 +29,54 @@ PROVIDERS = {
     # mistral-large-latest is gated behind a paid tier and returns 403 tier_not_allowed on
     # the free key; medium is the strongest model this account can actually call.
     "mistral": ("MISTRAL_API_KEY", "https://api.mistral.ai/v1", "mistral-medium-latest"),
+    # Anthropic speaks the OpenAI chat-completions shape at this base_url, so Claude joins as
+    # a plain HTTP provider rather than the `claude` subprocess. That subprocess could never
+    # work unattended: the binary is absent from the GitHub Actions runner, so every CI cycle
+    # logged "'claude' CLI not found on PATH" and ran three models while the writeup claimed
+    # four. claude-sonnet-5 is a pinned snapshot, not an alias - from the 4.6 generation on,
+    # the dateless ID maps to fixed weights. A benchmark whose point is comparing models is
+    # worthless if one of them can silently change underneath it mid-competition.
+    "anthropic": ("ANTHROPIC_API_KEY", "https://api.anthropic.com/v1/", "claude-sonnet-5"),
 }
+
+# Providers whose failures are worth one immediate retry. Featherless returned "temporarily
+# at capacity" once and unparseable output once in ten cycles; both are transient and both
+# cost a shadow datapoint. Not applied blindly to every provider: a missing API key or a
+# tier_not_allowed 403 will fail identically the second time and only wastes a cycle's time
+# budget. See RETRYABLE_ERROR_MARKERS.
+RETRYABLE_ERROR_MARKERS = (
+    "temporarily at capacity",
+    "no content in any response field",
+    "rate limit",
+    "429",
+    "500",
+    "502",
+    "503",
+    "504",
+    "timeout",
+)
+
+
+def _is_retryable(error: Optional[str]) -> bool:
+    if not error:
+        return False
+    lowered = error.lower()
+    return any(marker in lowered for marker in RETRYABLE_ERROR_MARKERS)
+
+
+def call_with_retry(provider: str, system_prompt: str, user_payload: dict, **kwargs) -> "ModelCallResult":
+    """One retry for transient provider failures. Deliberately not a backoff loop - the
+    scheduler gives each cycle a 90-second budget shared across four models, so a second
+    attempt is affordable and a third is not."""
+    result = call_openai_compatible(provider, system_prompt, user_payload, **kwargs)
+    if result.ok or not _is_retryable(result.error):
+        return result
+    retried = call_openai_compatible(provider, system_prompt, user_payload, **kwargs)
+    if not retried.ok:
+        # Report both attempts so the audit log shows a retry happened and still failed,
+        # rather than looking like a single unlucky call.
+        retried.error = f"{retried.error} (retried once; first attempt: {result.error})"
+    return retried
 
 
 @dataclass
