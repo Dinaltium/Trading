@@ -257,7 +257,7 @@ def cancel_open_orders() -> dict:
     except (LiveEndpointError, CliUnavailableError) as e:
         return {"ok": False, "error": str(e), "cancelled": 0}
 
-    listed = _run(["order", "list", "--status", "open", "--output", "json"])
+    listed = _run(["order", "list", "--status", "open"])
     if not listed.ok:
         return {"ok": False, "error": listed.error or listed.stderr, "cancelled": 0, "endpoint": endpoint}
 
@@ -277,6 +277,43 @@ def cancel_open_orders() -> dict:
         "cancelled": len(cancelled),
         "failed": failures or None,
     }
+
+
+def open_order_underlyings() -> tuple[set, Optional[str]]:
+    """Underlyings that already have a RESTING order at the broker.
+
+    A working order is claimed exposure even though it is not yet a position. The
+    one-position-per-underlying rule reads open positions only, so on 2026-09-01 a DIA spread
+    was proposed at 16:40, rested unfilled at 1.70, and a second order for the same two legs
+    went in at 18:10 - the rule saw no DIA position and allowed it. If both had filled the
+    account would have held 23 contracts of one spread across two entries, which is the exact
+    concentration that rule exists to prevent, arriving by a different route.
+
+    Returns (underlyings, error). On error the caller decides; an empty set here means the
+    gate sees no claim and permits more, so failing to it must be a deliberate decision."""
+    listed = _run(["order", "list", "--status", "open"])
+    if not listed.ok:
+        return set(), listed.error or listed.stderr
+
+    parsed = _safe_json(listed.stdout)
+    rows = parsed if isinstance(parsed, list) else (parsed or {}).get("orders") or []
+    if not isinstance(rows, list):
+        return set(), f"unexpected order payload: {str(parsed)[:200]}"
+
+    roots = set()
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        # A multi-leg order carries its symbols on the legs, not on the order itself.
+        symbols = [row.get("symbol")] + [
+            leg.get("symbol") for leg in (row.get("legs") or []) if isinstance(leg, dict)
+        ]
+        for symbol in symbols:
+            if symbol and len(symbol) > 6:
+                root = underlying_root(symbol)
+                if root:
+                    roots.add(root)
+    return roots, None
 
 
 def get_order_status(order_id: str) -> dict:

@@ -358,3 +358,35 @@ def test_gain_vs_cost_is_none_for_credit_structures():
     )
     assert credit.net_cost_basis < 0
     assert credit.gain_vs_cost is None
+
+
+# --- resting orders count as claimed exposure --------------------------------------------
+
+def test_multi_leg_order_symbols_come_from_the_legs(monkeypatch):
+    """A DIA spread rested unfilled at 16:40 and a second order for the same two legs went in
+    at 18:10, because one_position_per_underlying reads positions and a working order is not
+    one. MLEG orders carry their symbols on the legs, not on the order itself, so parsing the
+    top level alone finds nothing and the name still looks free."""
+    import src.alpaca_cli as C
+
+    payload = [{
+        "id": "abc",
+        "symbol": None,
+        "legs": [
+            {"symbol": "DIA260911P00526000"},
+            {"symbol": "DIA260911P00519000"},
+        ],
+    }]
+    monkeypatch.setattr(C, "_run", lambda *a, **k: C.CliResult(ok=True, stdout=__import__("json").dumps(payload)))
+    roots, err = C.open_order_underlyings()
+    assert err is None
+    assert roots == {"DIA"}
+
+
+def test_unreadable_orders_do_not_silently_claim_everything(monkeypatch):
+    import src.alpaca_cli as C
+
+    monkeypatch.setattr(C, "_run", lambda *a, **k: C.CliResult(ok=False, error="cli down"))
+    roots, err = C.open_order_underlyings()
+    assert roots == set()
+    assert "cli down" in err

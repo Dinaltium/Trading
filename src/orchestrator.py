@@ -21,7 +21,13 @@ from datetime import datetime, timedelta, timezone
 
 from src.agent_state import AgentState
 from src.audit_log import write_cycle_record
-from src.alpaca_cli import LiveEndpointError, get_broker_state, submit_spread_via_cli, underlying_root
+from src.alpaca_cli import (
+    LiveEndpointError,
+    get_broker_state,
+    open_order_underlyings,
+    submit_spread_via_cli,
+    underlying_root,
+)
 from src.decision_schema import (
     SYSTEM_PROMPT,
     build_user_payload,
@@ -66,7 +72,17 @@ def get_account_state(trading_client: TradingClient) -> AccountState:
     positions = trading_client.get_all_positions()
     # Same derivation the broker-state read uses — see alpaca_cli.underlying_root. Two
     # spellings of this produced a set that could never reconcile for a four-letter ticker.
-    open_underlyings = {underlying_root(p.symbol) if len(p.symbol) > 6 else p.symbol for p in positions}
+    held = {underlying_root(p.symbol) if len(p.symbol) > 6 else p.symbol for p in positions}
+
+    # A resting order is claimed exposure. Without this the one-position-per-underlying rule
+    # only sees filled positions, so an order that rests unfilled leaves the name looking free
+    # and a second order goes in behind it - which is what happened to DIA on 2026-09-01,
+    # twice on the same two legs. Union rather than replace: a name is spoken for if it has a
+    # position OR a working order.
+    resting, order_error = open_order_underlyings()
+    if order_error:
+        print(f"  -> open orders unreadable ({order_error}); gate sees positions only")
+    open_underlyings = held | resting
     # Open risk is the sum of what the open spreads can actually LOSE, taken from the same
     # Spread.max_loss the exit logic uses. It used to be sum(|market_value|) across option
     # legs, which was wrong twice over: it counted the long and short legs of a defined-risk
