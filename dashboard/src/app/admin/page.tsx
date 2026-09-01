@@ -111,7 +111,7 @@ export default function AdminPage() {
             </SelectContent>
           </Select>
           <p className="mt-2 text-xs text-muted-foreground">
-            This provider&apos;s decisions execute real (paper) trades. The other three
+            This provider&apos;s decisions execute real (paper) trades. The others
             automatically become shadow-only for the same cycle.
           </p>
           {settings.active_model_provider === "claude_code_cli" && (

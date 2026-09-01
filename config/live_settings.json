@@ -4,9 +4,9 @@
     "SPY",
     "QQQ",
     "IWM",
-    "AAPL"
+    "DIA"
   ],
-  "updated_at": "2026-08-31T17:50:00+00:00",
-  "updated_by": "widen-universe",
+  "updated_at": "2026-09-01T05:40:00+00:00",
+  "updated_by": "index-etfs-only",
   "trading_mode": "running"
 }

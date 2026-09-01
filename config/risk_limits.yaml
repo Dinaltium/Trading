@@ -20,11 +20,16 @@ allowed_strategies:
 kelly_fraction: 0.25                # Quarter-Kelly — conservative sizing multiplier
 kelly_cap_pct: 0.02                 # Kelly-sized risk still capped at max_loss_per_trade_pct
 
+# Index ETFs only, and that is a constraint rather than a preference. days_to_earnings is
+# hardcoded None in orchestrator.py and decision_schema.py because an index has no earnings
+# date; putting a single company in this list does not make that field start working, it just
+# makes the null a lie the models reason from. AAPL was briefly here and is the reason this
+# comment exists. Adding a single name requires wiring an earnings calendar first.
 underlyings:
   - SPY
   - QQQ
   - IWM
-  - AAPL
+  - DIA
 
 market_regime_gate:
   # ENFORCED in risk_gate.evaluate(). Until 2026-08-30 this block was dead config: nothing
