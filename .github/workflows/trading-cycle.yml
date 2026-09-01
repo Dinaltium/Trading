@@ -4,25 +4,27 @@ name: Trading cycle
 # the system "always on" — judges can watch it execute live in the Actions tab below,
 # with full printed output, whether or not anyone's computer is open.
 #
-# The cadence is driven from INSIDE the job, not by the cron. The previous version asked
-# for a firing every 15 minutes (`*/15 13-20 * * 1-5`); across Aug 29 and Aug 31 that
-# schedule was due ~36 times and fired zero times. GitHub explicitly deprioritises
-# short-interval schedules under load, so betting the whole trading day on 26 separate
-# cron events landing is a bet that already failed once.
+# The cadence is driven from INSIDE the job, not by the trigger. An earlier version asked for
+# a firing every 15 minutes; across Aug 29 and Aug 31 that schedule was due ~36 times and fired
+# zero. Each run now starts a process that drives its own 15-minute loop
+# (`src.scheduler --session`), so one trigger covers a half-session. Jobs stay under the 6h
+# GitHub-hosted ceiling and exit green at the closing bell.
 #
-# Instead: two firings a day, each starting a process that drives its own 15-minute loop
-# (`src.scheduler --session`). One landing cron now covers a half-session. Each job stays
-# under the 6h GitHub-hosted job ceiling and exits green at the closing bell.
+#   13:28 UTC  ->  330 min budget  ->  open through mid-afternoon
+#   19:00 UTC  ->   65 min budget  ->  the closing hour, self-exits at the bell
 #
-#   13:25 UTC  ->  330 min budget  ->  covers 09:30-14:55 ET (open through mid-afternoon)
-#   18:55 UTC  ->   90 min budget  ->  covers 14:55-16:00 ET, self-exits at the close
+# The script also checks Alpaca's own market clock every tick, so holidays and early closes
+# need no bookkeeping here.
+# GitHub's own scheduler is no longer used. It was due four times across Aug 29 - Sep 1 and
+# fired once, four hours late, after the close - a session that spent its whole budget printing
+# "market closed" and reported success, which is worse than not firing because it looks healthy.
+# Every session that actually traded was started by hand or by an external scheduler.
 #
-# Both are weekdays-only; the script also checks Alpaca's own market clock and skips
-# cleanly outside real trading hours, so holidays and early closes need no bookkeeping.
+# The trigger now lives outside GitHub: two cron-job.org jobs POST to this workflow's
+# workflow_dispatch endpoint at 13:28 UTC (330 min) and 19:00 UTC (65 min), weekdays. Removing
+# the schedule: block here stops late deliveries queueing behind live sessions and filling the
+# run history with cancellations.
 on:
-  schedule:
-    - cron: "25 13 * * 1-5"
-    - cron: "55 18 * * 1-5"
   workflow_dispatch:
     inputs:
       mode:
@@ -71,8 +73,32 @@ jobs:
       # --live run reaches the risk gate, gets an approval, and then dies at submission with
       # "'alpaca' CLI not found on PATH" — the agent would look healthy and trade nothing.
       - name: Install the Alpaca CLI
+        # Pinned, not @latest. Two reasons, both learned the hard way.
+        #
+        # The agent depends on exact CLI flags - it already shipped two bugs from calling
+        # flags that did not exist (`order list --output json`, and `order cancel` with a
+        # positional id). @latest means Alpaca can ship a release mid-competition that renames
+        # or removes a flag, and the agent breaks at the execution step with nobody watching.
+        #
+        # Retried because this step is a network dependency on Go's module proxy and checksum
+        # database, and on 2026-09-01 it failed a whole session with
+        # "verifying module: ... reading https://sum.golang.org/... stream error". Nothing to
+        # do with our code; the session simply never started. Now that cron-job.org triggers
+        # the day unattended, one transient proxy blip at 13:28 would silently cost a full
+        # trading day.
         run: |
-          go install github.com/alpacahq/cli/cmd/alpaca@latest
+          for attempt in 1 2 3; do
+            if go install github.com/alpacahq/cli/cmd/alpaca@v0.0.14; then
+              echo "alpaca CLI installed on attempt $attempt"
+              break
+            fi
+            if [ "$attempt" = "3" ]; then
+              echo "::error::alpaca CLI install failed after 3 attempts"
+              exit 1
+            fi
+            echo "install attempt $attempt failed, retrying in 15s"
+            sleep 15
+          done
           echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
 
       - name: Configure the Alpaca CLI paper profile
@@ -114,19 +140,10 @@ jobs:
         # out-of-process `alpaca doctor` paper-endpoint check that runs before any order is
         # built. See src/alpaca_cli.py.
         run: |
-          if [ "${{ github.event_name }}" = "schedule" ]; then
-            if [ "${{ github.event.schedule }}" = "25 13 * * 1-5" ]; then
-              BUDGET=330
-            else
-              BUDGET=90
-            fi
-            python -m src.scheduler --session --max-minutes "$BUDGET" --live
+          LIVE=""
+          if [ "${{ inputs.live }}" = "true" ]; then LIVE="--live"; fi
+          if [ "${{ inputs.mode }}" = "session" ]; then
+            python -m src.scheduler --session --max-minutes "${{ inputs.max_minutes }}" $LIVE
           else
-            LIVE=""
-            if [ "${{ inputs.live }}" = "true" ]; then LIVE="--live"; fi
-            if [ "${{ inputs.mode }}" = "session" ]; then
-              python -m src.scheduler --session --max-minutes "${{ inputs.max_minutes }}" $LIVE
-            else
-              python -m src.scheduler --once $LIVE
-            fi
+            python -m src.scheduler --once $LIVE
           fi
