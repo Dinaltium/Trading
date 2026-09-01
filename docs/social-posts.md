@@ -21,9 +21,31 @@ urge to slip it in early; the reveal only works if it is actually a reveal.
 change it to another real one. The whole value of a build-in-public post about setbacks is
 that a judge can open the repo and find the setback.
 
+## Before posting anything to X — check all four
+
+1. **Under 280 characters.** Not on Premium, so this is hard. Six of the eight drafts here were
+   originally over, one by 113 characters. Count it, do not eyeball it.
+2. **Both handles present** — `@lablabai` and `@AlpacaHQ`. The challenge requires tagging both.
+   These cost 20 characters; budget them FIRST and write the post into what remains. One post
+   went out without them because they were trimmed to make the copy fit, which is backwards:
+   the tags are a requirement and the copy is not.
+3. **Attach the image to the post it illustrates**, not automatically to the first one.
+4. **No em dashes in threaded replies.** The X composer reordered the lines twice when a
+   threaded post began with one. Commas type reliably.
+
+Run this before posting:
+
+```bash
+python - <<'PY'
+v = """paste the post here"""
+print(len(v), '<=280' if len(v)<=280 else 'TOO LONG')
+print('tags:', '@lablabai' in v, '@AlpacaHQ' in v)
+PY
+```
+
 ---
 
-## Day 1 — Aug 28 · The constraint that shaped everything
+## Day 1 — Aug 28 · The constraint that shaped everything  ✅ POSTED
 
 ### X (Rafan)
 
@@ -64,7 +86,7 @@ Defined-risk spreads only. Max loss is a property of the structure, not a promis
 
 ---
 
-## Day 2 — Aug 29 · First real order
+## Day 2 — Aug 29 · First real order  ✅ POSTED
 
 ### X (Rafan)
 
@@ -105,7 +127,7 @@ out-of-process, in a binary we did not write, before any order is built.
 
 ---
 
-## Day 3 — Aug 30 · Four guards that assume the agent is wrong
+## Day 3 — Aug 30 · Four guards that assume the agent is wrong  ✅ POSTED
 
 ### X (Rafan)
 
@@ -151,7 +173,7 @@ A guard that asked an LLM whether the LLM was lying would defeat its own purpose
 
 ---
 
-## Day 4 — Aug 31 · The setback post (the strongest one)
+## Day 4 — Aug 31 · The setback post (the strongest one)  ✅ POSTED
 
 ### X (Rafan)
 
@@ -262,11 +284,9 @@ Four days of building taught us what the project actually was. Then we named it.
 ```
 Our trading loop was scheduled every 15 min during market hours.
 
-Due ~36 times across two sessions.
-Fired ZERO times.
+Due ~36 times across two sessions. Fired ZERO.
 
-The workflow was fine — manual runs passed every time, which is exactly
-why nobody noticed. GitHub quietly deprioritises dense cron schedules.
+The workflow was fine — manual runs passed every time, which is exactly why nobody noticed.
 
 Fix: stop needing 26 crons to land. Need 1.
 
@@ -308,15 +328,11 @@ was never broken.
 ### X (Rafan)
 
 ```
-Added property-based tests over our risk gate.
+Property-based tests on our agent. Found a crash in under a minute.
 
-Found a crash in under a minute:
+Kelly sizing divides by the payoff ratio. A spread with zero max profit makes it zero — divide by zero, exception out of the RISK GATE.
 
-Kelly sizing computes f* = (p·b − q)/b, b = max_profit/max_loss.
-max_profit = 0 → divide by zero → exception out of the RISK GATE → cycle dies.
-
-Reachable: any debit spread quoted at full width.
-A bad quote would kill the tick instead of being declined by it.
+Reachable on any debit spread quoted at full width.
 
 @lablabai @AlpacaHQ
 ```
@@ -359,11 +375,10 @@ We published every bug our trading agent had.
 
 - IV Rank pinned at 100 for 4 days
 - a cron that never fired
-- a guard that would've blocked on a disagreement it invented (AAP ≠ AAPL)
+- a guard that blocked on a disagreement it invented (AAP ≠ AAPL)
 - a bad quote that could kill the cycle
-- risk config nothing actually read
 
-Plus what's still open. An agent handling money should be judged on both.
+Plus what's still open.
 
 @lablabai @AlpacaHQ
 ```
