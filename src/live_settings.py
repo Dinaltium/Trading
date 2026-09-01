@@ -81,17 +81,25 @@ class LiveSettings:
 
 DEFAULT_SETTINGS = LiveSettings()
 
+# What to fall back to when the settings cannot be read at all. NOT the default above, which
+# is trading_mode="running": if an operator sets flatten or paused and the next fetch fails on
+# a network blip, falling back to "running" silently resumes trading against an explicit human
+# instruction to stop. That is the kill switch failing open, which is the one direction it must
+# never fail. exit_only stops new entries while still running stop-loss and take-profit, so a
+# transient failure costs a cycle of entries and never overrides a halt.
+UNREADABLE_SETTINGS = LiveSettings(trading_mode="exit_only")
+
 
 def fetch_live_settings() -> LiveSettings:
     try:
         resp = requests.get(RAW_URL, timeout=FETCH_TIMEOUT_SECONDS)
         if resp.status_code != 200:
-            print(f"[live_settings] fetch returned {resp.status_code}, using defaults")
-            return DEFAULT_SETTINGS
+            print(f"[live_settings] fetch returned {resp.status_code}; falling back to exit_only")
+            return UNREADABLE_SETTINGS
         data = resp.json()
     except Exception as e:
-        print(f"[live_settings] fetch/parse failed ({e}), using defaults")
-        return DEFAULT_SETTINGS
+        print(f"[live_settings] fetch/parse failed ({e}); falling back to exit_only")
+        return UNREADABLE_SETTINGS
 
     provider = data.get("active_model_provider", "groq")
     if provider not in ALLOWED_LIVE_PROVIDERS:

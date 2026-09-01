@@ -108,6 +108,7 @@ def get_account_state(trading_client: TradingClient) -> AccountState:
         equity=float(acct.equity),
         open_risk_dollars=open_risk,
         open_underlyings=open_underlyings,
+        held_underlyings=held,
         daily_pnl_pct=daily_pnl_pct,
     )
 
@@ -420,7 +421,7 @@ def run_cycle(
                 # only runs in the mode you are not running is not a guard. It is a
                 # read-only check, so there is no reason to skip it.
                 recon = reconcile_positions(
-                    account_state.open_underlyings, account_state.equity, get_broker_state()
+                    account_state.held_underlyings, account_state.equity, get_broker_state()
                 )
                 reconciliation = recon.as_record()
 

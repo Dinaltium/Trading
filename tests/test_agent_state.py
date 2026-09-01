@@ -193,3 +193,39 @@ def test_no_mode_lets_the_operator_choose_a_trade():
 
     opening = [m for m in TRADING_MODES if LiveSettings(trading_mode=m).may_open_new_positions]
     assert opening == ["running"]
+
+
+def test_unreadable_settings_never_resume_trading():
+    """The kill switch must not fail open.
+
+    fetch_live_settings falls back when the settings cannot be read. It used to fall back to
+    the module default, whose trading_mode is "running" — so an operator could set flatten,
+    a single network blip could drop the next fetch, and the agent would silently resume
+    trading against an explicit instruction to stop. exit_only halts new entries while still
+    running stop-loss and take-profit, so a transient failure costs a cycle of entries and can
+    never override a halt."""
+    from src.live_settings import DEFAULT_SETTINGS, UNREADABLE_SETTINGS
+
+    assert not UNREADABLE_SETTINGS.may_open_new_positions
+    assert UNREADABLE_SETTINGS.may_close_positions
+    assert DEFAULT_SETTINGS.may_open_new_positions, "the normal default still trades"
+
+
+def test_resting_orders_do_not_read_as_phantom_holdings():
+    """Guard 4 compares the agent's position map against the broker's. open_underlyings now
+    includes names with a resting order, which the broker does not report as a position — so
+    reconciliation must be handed held_underlyings, or every working order looks like a
+    holding the broker has lost."""
+    from src.guards import reconcile_positions
+    from src.risk_gate import AccountState
+
+    acct = AccountState(
+        equity=100_000.0, open_risk_dollars=0.0,
+        open_underlyings={"SPY", "DIA"},   # DIA has only a resting order
+        daily_pnl_pct=0.0, held_underlyings={"SPY"},
+    )
+    broker = {"ok": True, "underlyings": ["SPY"], "equity": 100_000.0}
+
+    assert reconcile_positions(acct.held_underlyings, acct.equity, broker).passed
+    noisy = reconcile_positions(acct.open_underlyings, acct.equity, broker)
+    assert noisy.warnings, "the old wiring would have warned about a phantom DIA"

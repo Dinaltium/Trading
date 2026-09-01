@@ -267,7 +267,11 @@ def cancel_open_orders() -> dict:
 
     cancelled, failures = [], []
     for order_id in ids:
-        result = _run(["order", "cancel", order_id])
+        # --order-id is required; the CLI rejects a positional id outright. Passing it
+        # positionally meant every cancel failed and flatten reported failures while closing
+        # positions - the operator would have been told the book was flat with orders still
+        # working. Verified against the CLI rather than assumed this time.
+        result = _run(["order", "cancel", "--order-id", order_id])
         (cancelled if result.ok else failures).append(order_id)
 
     return {

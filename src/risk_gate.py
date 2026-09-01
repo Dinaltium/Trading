@@ -4,7 +4,7 @@ must be independently verifiable by a judge reading the code, not trusted on fai
 See AGENTS.md section 6 and 6b, BRAINSTORM.md section 5 (research pipeline) for rationale.
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
 
@@ -40,8 +40,16 @@ class TradeProposal:
 class AccountState:
     equity: float
     open_risk_dollars: float         # sum of max_loss across all currently open positions
-    open_underlyings: set[str]       # distinct underlyings with an open position right now
+    open_underlyings: set[str]       # names that are SPOKEN FOR: an open position or a resting
+                                     # order. This is what the concurrency rules read.
     daily_pnl_pct: float             # today's P&L as a fraction of equity, negative = loss
+
+    # Names with an actual FILLED position. Kept separate from open_underlyings because Guard 4
+    # compares the agent's position map against the broker's, and a resting order is not a
+    # position - folding the two together makes every working order look like a phantom
+    # holding. Defaults to empty so existing callers and tests that only care about the gate
+    # keep working; the orchestrator always passes it.
+    held_underlyings: set[str] = field(default_factory=set)
 
 
 @dataclass
