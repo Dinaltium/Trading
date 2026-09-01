@@ -180,7 +180,11 @@ Full reasoning + decisions behind this: see `BRAINSTORM.md`.
 ## 8. Repo Structure (target)
 
 **Dashboard (built):** Next.js + shadcn/ui, `dashboard/`, deployed to Vercel at
-**https://alpaca-agent-dashboard-eta.vercel.app** (auto-deploys on push to `main`, root dir `dashboard/`).
+**https://alpaca-trade-intelli.vercel.app** (auto-deploys on push to `main`, root dir `dashboard/`).
+That is the Vercel project `alpaca-trade-dashboard`. A second project, `alpaca-agent-dashboard`,
+serves byte-identical content at `alpaca-agent-dashboard-eta.vercel.app` - a leftover from the
+abandoned plan to host /admin as a separate private project, before it was gated with Basic Auth
+instead. Only the URL above is published anywhere; the other can be deleted.
 Read-only — reads `logs/audit_log.jsonl` fresh from GitHub raw on every request (the scheduler
 auto-pushes that one file after each real tick; see `src/audit_log.py`'s `push_audit_log()`).
 This is the "Application URL" for hackathon submission. Full detail: `BRAINSTORM.md` §12.
