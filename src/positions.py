@@ -18,7 +18,7 @@ from typing import Optional
 
 import yaml
 
-from src.alpaca_cli import _redacted_command, _run, _safe_json, verify_paper_endpoint
+from src.alpaca_cli import _redacted_command, _run, _safe_json, cancel_open_orders, verify_paper_endpoint
 
 CONFIG_PATH = Path(__file__).resolve().parent.parent / "config" / "risk_limits.yaml"
 OPTION_MULTIPLIER = 100  # one contract controls 100 shares
@@ -320,6 +320,34 @@ def close_spread_via_cli(spread: Spread, reason: str, dry_run: bool = False) -> 
         record["order_id"] = response.get("id")
         record["status"] = response.get("status")
     return record
+
+
+def flatten_all_positions(dry_run: bool = True) -> dict:
+    """Close every open spread regardless of P&L, and cancel anything still resting.
+
+    Deliberately does NOT consult evaluate_exits(). The stop-loss and take-profit answer
+    "is this position going the way we expected"; flatten answers "get out", which is a
+    different question and must not be filtered through the first one. A flatten that only
+    closed the positions the exit rules already wanted closed would do nothing in exactly
+    the situation it exists for."""
+    cancel_result = cancel_open_orders() if not dry_run else {"ok": True, "cancelled": 0, "dry_run": True}
+
+    spreads, error = fetch_open_spreads()
+    if error:
+        return {"ok": False, "error": error, "closed": [], "held": [], "cancelled_orders": cancel_result}
+
+    closed = [
+        close_spread_via_cli(spread, "flatten: operator halt, closing regardless of P&L", dry_run=dry_run)
+        for spread in spreads
+    ]
+    return {
+        "ok": True,
+        "flattened": True,
+        "open_spreads": len(spreads),
+        "closed": closed,
+        "held": [],
+        "cancelled_orders": cancel_result,
+    }
 
 
 def manage_open_positions(dry_run: bool = True) -> dict:

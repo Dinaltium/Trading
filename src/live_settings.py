@@ -38,7 +38,20 @@ FETCH_TIMEOUT_SECONDS = 10
 # managing the risk it took. "exit_only" refuses new entries while still running stop-loss
 # evaluation and closing orders. That distinction only became meaningful once the agent
 # gained the ability to close a position at all; see src/positions.py.
-TRADING_MODES = ("running", "exit_only", "paused")
+#
+# "flatten" is the operator's panic button and the reason the other three were not enough.
+# exit_only stops NEW entries and leaves open positions to the stop-loss, which answers
+# "stop taking risk" but not "get me out of the risk I already have" - and the second is
+# what an operator actually wants when something looks wrong. flatten closes every open
+# position immediately regardless of P&L, cancels resting orders, and then latches to
+# paused: it does not resume on its own. That mirrors the execution circuit breaker, which
+# deliberately does not un-trip on the first success, for the same reason. A panic button
+# that silently resumes trading is a worse button than no panic button.
+#
+# What none of these modes do is approve individual trades. The operator can stop
+# everything and can never choose anything - that boundary is what keeps the agent
+# autonomous rather than human-driven.
+TRADING_MODES = ("running", "exit_only", "flatten", "paused")
 
 
 @dataclass
@@ -53,7 +66,12 @@ class LiveSettings:
 
     @property
     def may_close_positions(self) -> bool:
-        return self.trading_mode in ("running", "exit_only")
+        return self.trading_mode in ("running", "exit_only", "flatten")
+
+    @property
+    def should_flatten(self) -> bool:
+        """Close everything now, regardless of P&L, then latch off."""
+        return self.trading_mode == "flatten"
 
     @property
     def trading_paused(self) -> bool:

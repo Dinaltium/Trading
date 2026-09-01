@@ -21,11 +21,16 @@ const PROVIDERS = [
 ];
 const UNDERLYINGS = ["SPY", "QQQ", "DIA", "IWM"];
 
-// Three states, because "stop everything" is the wrong tool while positions are open —
-// it halts new risk and halts managing existing risk at the same time.
+// Four states, ordered by how much they stop. "Stop everything" is the wrong tool while
+// positions are open — it halts new risk and halts managing existing risk at the same time —
+// so the useful controls sit between Running and Paused.
+//
+// None of these approve a trade. The operator can stop everything and can never choose
+// anything, which is the line that keeps the agent autonomous rather than human-driven.
 const MODES = [
   { value: "running", label: "Running", detail: "Opens new positions and manages existing ones." },
-  { value: "exit_only", label: "Exit only", detail: "No new positions. Stop-losses still evaluate and can close." },
+  { value: "exit_only", label: "Exit only", detail: "No new positions. Stop-loss and take-profit still evaluate and can close." },
+  { value: "flatten", label: "Flatten", detail: "Close every open position now regardless of P&L, cancel resting orders, then stay off." },
   { value: "paused", label: "Paused", detail: "Nothing at all — open positions are left unmanaged." },
 ];
 
@@ -171,6 +176,14 @@ export default function AdminPage() {
               </span>
             </label>
           ))}
+          {settings.trading_mode === "flatten" && (
+            <p className="mt-2 rounded-md border border-red-500/40 bg-red-500/10 p-2 text-xs text-red-700 dark:text-red-400">
+              Flatten closes <strong>everything</strong> at the next cycle, regardless of profit or loss,
+              and cancels any resting orders. It does not turn itself off afterwards — the agent will
+              not open new positions until you set the mode back yourself. Use this when something is
+              wrong, not to take a profit.
+            </p>
+          )}
           {settings.trading_mode === "paused" && (
             <p className="mt-2 rounded-md border border-amber-500/40 bg-amber-500/10 p-2 text-xs text-amber-700 dark:text-amber-400">
               Paused also stops stop-loss evaluation. If anything is open, nothing is watching it.

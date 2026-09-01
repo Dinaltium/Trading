@@ -247,6 +247,38 @@ def get_broker_state() -> dict:
     return {"ok": True, "underlyings": sorted(underlyings), "equity": equity, "position_count": len(rows)}
 
 
+def cancel_open_orders() -> dict:
+    """Cancel every resting order. A halt that leaves a working limit at the broker is not a
+    halt: the order can still fill minutes after the operator pulled the switch, opening a
+    position nobody wants. Endpoint is re-verified first, exactly as submission does — a
+    cancel is still an instruction to the broker."""
+    try:
+        endpoint = verify_paper_endpoint()
+    except (LiveEndpointError, CliUnavailableError) as e:
+        return {"ok": False, "error": str(e), "cancelled": 0}
+
+    listed = _run(["order", "list", "--status", "open", "--output", "json"])
+    if not listed.ok:
+        return {"ok": False, "error": listed.error or listed.stderr, "cancelled": 0, "endpoint": endpoint}
+
+    parsed = _safe_json(listed.stdout)
+    rows = parsed if isinstance(parsed, list) else (parsed or {}).get("orders") or []
+    ids = [str(r.get("id")) for r in rows if isinstance(r, dict) and r.get("id")]
+
+    cancelled, failures = [], []
+    for order_id in ids:
+        result = _run(["order", "cancel", order_id])
+        (cancelled if result.ok else failures).append(order_id)
+
+    return {
+        "ok": not failures,
+        "endpoint": endpoint,
+        "open_orders_found": len(ids),
+        "cancelled": len(cancelled),
+        "failed": failures or None,
+    }
+
+
 def get_order_status(order_id: str) -> dict:
     """Post-submission lifecycle check, used by the audit trail rather than for control flow."""
     result = _run(["order", "get", "--order-id", order_id])

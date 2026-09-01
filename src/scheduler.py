@@ -17,7 +17,7 @@ from src.agent_state import AgentState
 from src.audit_log import push_audit_log, write_exit_record
 from src.live_settings import fetch_live_settings
 from src.orchestrator import run_cycle
-from src.positions import manage_open_positions
+from src.positions import flatten_all_positions, manage_open_positions
 
 INTERVAL_MINUTES = 15
 CYCLE_TIMEOUT_SECONDS = 90  # alpaca-py sets no request timeout anywhere in its REST layer
@@ -45,6 +45,25 @@ def run_all_cycles(dry_run: bool = True, test_mode: bool = False):
     settings = fetch_live_settings()  # pulled fresh every tick — see src/live_settings.py
     if settings.trading_mode == "paused":
         print(f"[{datetime.now().isoformat()}] trading paused via /admin, skipping cycle entirely")
+        return
+
+    # Flatten short-circuits everything else: close the book, cancel resting orders, latch
+    # off. Checked before the ordinary exit pass because it is not a variant of it - the
+    # stop-loss asks whether a position is going badly, flatten does not care.
+    if settings.should_flatten:
+        print(f"[{datetime.now().isoformat()}] FLATTEN requested via /admin — closing all positions")
+        result = flatten_all_positions(dry_run=dry_run)
+        write_exit_record(result, dry_run=dry_run)
+        cancelled = (result.get("cancelled_orders") or {}).get("cancelled", 0)
+        print(f"  -> closed {len(result.get('closed') or [])} spread(s), cancelled {cancelled} resting order(s)")
+        if not result.get("ok"):
+            print(f"  -> FLATTEN INCOMPLETE: {result.get('error')}")
+        # Deliberately not auto-switching the mode to paused here. The agent must not edit
+        # the switch a human threw: config/live_settings.json is the operator's, and an
+        # agent that rewrites it is an agent that can also un-throw it. flatten already
+        # opens nothing, so leaving it latched is safe until a human changes it.
+        if not test_mode:
+            push_audit_log()
         return
 
     # Exits run BEFORE entries and in every non-paused mode. Managing existing risk is not

@@ -259,3 +259,49 @@ def test_no_take_profit_configured_falls_back_to_stop_only():
 
     cfg = {"stop_loss_pct_of_max_loss": 0.60}
     assert not evaluate_exits([_debit_spread(unrealized_pl=180.0)], cfg)[0].should_close
+
+
+# --- flatten -----------------------------------------------------------------------------
+# The operator's panic button. exit_only answers "stop taking risk"; flatten answers "get me
+# out of the risk I already have", and the second is what someone actually wants when
+# something looks wrong.
+
+def test_flatten_closes_positions_the_exit_rules_would_have_held(monkeypatch):
+    """The whole point. A flatten filtered through evaluate_exits() would close only what the
+    stop-loss already wanted closed, and so do nothing in the situation it exists for."""
+    import src.positions as P
+
+    spread = _debit_spread(unrealized_pl=10.0)  # comfortably inside both stop and target
+    assert not P.evaluate_exits([spread], {"stop_loss_pct_of_max_loss": 0.60})[0].should_close
+
+    monkeypatch.setattr(P, "fetch_open_spreads", lambda: ([spread], None))
+    monkeypatch.setattr(P, "cancel_open_orders", lambda: {"ok": True, "cancelled": 2})
+    closes = []
+    monkeypatch.setattr(P, "close_spread_via_cli",
+                        lambda s, reason, dry_run=False: closes.append(reason) or {"spread": s.key(), "reason": reason})
+
+    result = P.flatten_all_positions(dry_run=False)
+    assert result["ok"] and result["flattened"]
+    assert len(result["closed"]) == 1
+    assert "flatten" in closes[0]
+
+
+def test_flatten_cancels_resting_orders(monkeypatch):
+    """A halt that leaves a working limit at the broker is not a halt — it can still fill
+    minutes after the operator pulled the switch."""
+    import src.positions as P
+
+    monkeypatch.setattr(P, "fetch_open_spreads", lambda: ([], None))
+    monkeypatch.setattr(P, "cancel_open_orders", lambda: {"ok": True, "cancelled": 3})
+    result = P.flatten_all_positions(dry_run=False)
+    assert result["cancelled_orders"]["cancelled"] == 3
+
+
+def test_flatten_reports_failure_rather_than_claiming_success(monkeypatch):
+    import src.positions as P
+
+    monkeypatch.setattr(P, "cancel_open_orders", lambda: {"ok": True, "cancelled": 0})
+    monkeypatch.setattr(P, "fetch_open_spreads", lambda: ([], "broker unreachable"))
+    result = P.flatten_all_positions(dry_run=False)
+    assert not result["ok"]
+    assert "broker unreachable" in result["error"]

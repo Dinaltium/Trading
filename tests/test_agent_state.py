@@ -162,3 +162,34 @@ def test_break_even_close_is_not_a_loss():
     s = AgentState()
     s.record_closed_trade("SPY", 0.0)
     assert s.consecutive_losses_by_underlying.get("SPY", 0) == 0
+
+
+# --- operator modes -----------------------------------------------------------------------
+
+def test_flatten_stops_new_entries_but_still_permits_closing():
+    from src.live_settings import LiveSettings
+
+    s = LiveSettings(trading_mode="flatten")
+    assert not s.may_open_new_positions
+    assert s.may_close_positions
+    assert s.should_flatten
+
+
+def test_paused_is_the_only_mode_that_also_stops_closing():
+    """paused refuses everything, which is the wrong tool with positions open — it stops the
+    agent taking risk and simultaneously stops it managing the risk it took."""
+    from src.live_settings import LiveSettings, TRADING_MODES
+
+    for mode in TRADING_MODES:
+        s = LiveSettings(trading_mode=mode)
+        assert s.may_close_positions is (mode != "paused"), mode
+
+
+def test_no_mode_lets_the_operator_choose_a_trade():
+    """The boundary that keeps this autonomous: an operator can stop everything and can
+    never pick anything. Only 'running' opens positions, and it opens what the rulebook
+    mandates, not what a human asked for."""
+    from src.live_settings import LiveSettings, TRADING_MODES
+
+    opening = [m for m in TRADING_MODES if LiveSettings(trading_mode=m).may_open_new_positions]
+    assert opening == ["running"]

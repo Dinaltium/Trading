@@ -19,7 +19,7 @@ const BRANCH = "main";
 const ALLOWED_PROVIDERS = ["groq", "featherless", "mistral", "claude_code_cli"];
 const ALLOWED_UNDERLYINGS = ["SPY", "QQQ", "DIA", "IWM"];
 // Must stay in sync with TRADING_MODES in src/live_settings.py.
-const ALLOWED_MODES = ["running", "exit_only", "paused"];
+const ALLOWED_MODES = ["running", "exit_only", "flatten", "paused"];
 
 type LiveSettings = {
   active_model_provider: string;

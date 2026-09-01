@@ -30,6 +30,7 @@ from src.decision_schema import (
     rulebook_strategy,
 )
 from src.execution import build_spread
+from src.live_settings import fetch_live_settings
 from src.guards import (
     check_faithfulness,
     cross_model_agreement,
@@ -401,6 +402,31 @@ def run_cycle(
                         }
                         raise StopIteration  # skip the live path without duplicating the except
                     # Submission goes through the Alpaca CLI, which re-verifies the paper
+                    # Re-read the operator switch immediately before submitting. The mode is
+                    # otherwise fetched once at the start of a tick, so a halt thrown mid-tick
+                    # was not seen until the next one - up to 15 minutes during which the agent
+                    # kept opening positions after a human had told it to stop. Checking here
+                    # costs one HTTP call on the only path where being wrong places an order.
+                    if not fetch_live_settings().may_open_new_positions:
+                        risk_verdict = {
+                            "approved": False,
+                            "reason": "operator halted trading between the cycle start and submission",
+                        }
+                        return write_cycle_record(
+                            underlying=underlying,
+                            signals=signals,
+                            live_decision=live_decision,
+                            shadow_decisions=shadow_decisions,
+                            risk_gate_verdict=risk_verdict,
+                            fill_result=None,
+                            dry_run=dry_run,
+                            account_equity=account_state.equity,
+                            live_provider=live_provider,
+                            live_decision_error=live_decision_error,
+                            live_decision_warnings=live_decision_warnings,
+                            live_rulebook=live_rulebook,
+                            guards=guards,
+                        )
                     # endpoint out-of-process before the order is built. See src/alpaca_cli.py.
                     fill_result = submit_spread_via_cli(spread, gate_result.contracts)
                     if fill_result.get("submitted"):
