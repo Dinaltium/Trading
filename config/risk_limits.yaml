@@ -91,4 +91,20 @@ exits:
   # is taken well before expiry on purpose - the last portion of a defined-risk spread's
   # upside is the slowest and least certain to arrive, and with days rather than months left
   # in the competition, realised beats theoretical.
+  # Applies to CREDIT structures, where the credit received is the maximum and half of it
+  # is a reachable target.
   take_profit_pct_of_max_profit: 0.50
+
+  # Applies to DEBIT spreads, measured against what was paid rather than against max profit.
+  # The first version of this exit used max_profit for everything and was therefore dead code
+  # for every long vertical the agent opens: the SPY spreads it held were 8 points wide and
+  # bought for ~1.85, so 50% of max profit required the spread to more than double AND the
+  # underlying to travel most of that width. A 7-DTE position does not get there. The exit
+  # existed, logged nothing, and closed nothing.
+  #
+  # 0.75 is the midpoint of the standard 50-100% range for managing a long vertical. It was
+  # chosen from that range and NOT from the open position's current P&L - at the time of the
+  # change the book was up roughly 37% on cost, so this threshold does not fire immediately.
+  # Recording that here because the alternative reading is that the number was fitted to the
+  # outcome, and the whole point of this repo is that a reader does not have to guess.
+  take_profit_pct_of_debit_paid: 0.75

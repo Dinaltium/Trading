@@ -305,3 +305,56 @@ def test_flatten_reports_failure_rather_than_claiming_success(monkeypatch):
     result = P.flatten_all_positions(dry_run=False)
     assert not result["ok"]
     assert "broker unreachable" in result["error"]
+
+
+# --- take-profit measured against cost ---------------------------------------------------
+# The first version measured every structure against max_profit, which made the exit dead
+# code for long verticals: an 8-wide spread bought for 1.85 needs to more than double before
+# half of max profit is reached, and a 7-DTE position does not get there.
+
+def test_debit_spread_take_profit_is_measured_against_what_was_paid():
+    from src.positions import evaluate_exits
+
+    cfg = {"stop_loss_pct_of_max_loss": 0.60,
+           "take_profit_pct_of_max_profit": 0.50,
+           "take_profit_pct_of_debit_paid": 0.75}
+    # paid 200, up 160 = +80% on cost, but only 160/600 = 27% of max profit
+    spread = _debit_spread(unrealized_pl=160.0, paid=200.0, width=8.0)
+    decision = evaluate_exits([spread], cfg)[0]
+    assert decision.should_close
+    assert "on debit paid" in decision.reason
+
+
+def test_the_old_max_profit_threshold_alone_would_not_have_fired():
+    """Regression guard for the actual defect: the same winning position, with only the
+    max-profit rule configured, is held."""
+    from src.positions import evaluate_exits
+
+    cfg = {"stop_loss_pct_of_max_loss": 0.60, "take_profit_pct_of_max_profit": 0.50}
+    spread = _debit_spread(unrealized_pl=160.0, paid=200.0, width=8.0)
+    assert not evaluate_exits([spread], cfg)[0].should_close
+
+
+def test_below_the_cost_target_is_still_held():
+    from src.positions import evaluate_exits
+
+    cfg = {"stop_loss_pct_of_max_loss": 0.60, "take_profit_pct_of_debit_paid": 0.75}
+    spread = _debit_spread(unrealized_pl=80.0, paid=200.0, width=8.0)  # +40% on cost
+    assert not evaluate_exits([spread], cfg)[0].should_close
+
+
+def test_gain_vs_cost_is_none_for_credit_structures():
+    """A credit spread's upside IS the credit, so max_profit already measures it correctly
+    and applying a cost multiple would be meaningless."""
+    from src.positions import Leg, Spread
+    from datetime import date
+
+    credit = Spread(
+        underlying="SPY", expiry=date(2026, 9, 8),
+        legs=[
+            Leg("SPY260908P00760000", "SPY", date(2026, 9, 8), "P", 760.0, -1, -150.0, -100.0, 50.0),
+            Leg("SPY260908P00752000", "SPY", date(2026, 9, 8), "P", 752.0, 1, 0.0, 0.0, 0.0),
+        ],
+    )
+    assert credit.net_cost_basis < 0
+    assert credit.gain_vs_cost is None

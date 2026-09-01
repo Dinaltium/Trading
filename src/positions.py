@@ -113,6 +113,23 @@ class Spread:
         return max(widths) * OPTION_MULTIPLIER * self.contracts - net
 
     @property
+    def gain_vs_cost(self) -> Optional[float]:
+        """Profit as a multiple of what was paid, for DEBIT spreads only.
+
+        max_profit is the wrong yardstick for a long vertical. These three SPY spreads were
+        8 points wide and bought for ~1.85, so half of max profit needs the spread to more
+        than double AND the underlying to travel most of the width - a threshold a 7-DTE
+        position essentially never reaches. Measured against cost it is reachable, which is
+        the point of having an exit at all.
+
+        Returns None for credit structures, where the credit received IS the maximum and
+        gain_fraction already measures the right thing."""
+        cost = self.net_cost_basis
+        if cost <= 0:
+            return None
+        return self.unrealized_pl / cost
+
+    @property
     def gain_fraction(self) -> Optional[float]:
         """How much of the best case has already been captured, 0.0 to 1.0. Negative when
         the position is losing."""
@@ -219,6 +236,19 @@ def evaluate_exits(spreads: list[Spread], config: Optional[dict] = None) -> list
         # already captured, which meant the agent never realised a gain, never freed the
         # name for another trade, and never produced a closed winning trade for the
         # adaptive-restriction streak to count.
+        # Debit spreads are measured against what was paid, credit spreads against the
+        # credit taken in. Applying one yardstick to both is what made the first version of
+        # this exit unreachable for every long vertical the agent opens.
+        take_cost = config.get("take_profit_pct_of_debit_paid")
+        vs_cost = spread.gain_vs_cost
+        if take_cost is not None and vs_cost is not None and vs_cost >= take_cost:
+            decisions.append(ExitDecision(
+                spread, True,
+                f"take-profit: up {vs_cost:.0%} on debit paid (${spread.unrealized_pl:,.2f} "
+                f"on ${spread.net_cost_basis:,.2f}), target {take_cost:.0%}",
+            ))
+            continue
+
         gain = spread.gain_fraction
         if take_at is not None and gain is not None and gain >= take_at:
             decisions.append(ExitDecision(
