@@ -136,8 +136,26 @@ def push_audit_log(commit_message: Optional[str] = None) -> bool:
         if "nothing to commit" in commit.stdout:
             return True  # no new records since last push — not an error
         push = subprocess.run(["git", "push"], cwd=REPO_ROOT, capture_output=True, text=True)
-        if push.returncode != 0:
-            print(f"[audit_log push] push failed: {push.stderr.strip()}")
+        if push.returncode == 0:
+            return True
+
+        # A push can be rejected simply because main moved while the session was running -
+        # someone committing during market hours is enough. Swallowing that failure means the
+        # cycle's records, the IV history rows and agent_state.json are stranded on a runner
+        # that is about to be destroyed, and nothing says so. That happened on 2026-09-01:
+        # three commits landed mid-session and every tick afterwards was silently dropped.
+        #
+        # Rebase and retry once. Rebase rather than merge because the audit log is append-only
+        # and the two sides never touch the same line; retry once rather than loop because the
+        # trading loop must not be held up by git.
+        print(f"[audit_log push] push rejected, rebasing onto origin: {push.stderr.strip()}")
+        rebase = subprocess.run(["git", "pull", "--rebase", "--autostash"], cwd=REPO_ROOT, capture_output=True, text=True)
+        if rebase.returncode != 0:
+            print(f"[audit_log push] rebase failed, records remain local: {rebase.stderr.strip()}")
+            return False
+        retry = subprocess.run(["git", "push"], cwd=REPO_ROOT, capture_output=True, text=True)
+        if retry.returncode != 0:
+            print(f"[audit_log push] push failed after rebase: {retry.stderr.strip()}")
             return False
         return True
     except Exception as e:
