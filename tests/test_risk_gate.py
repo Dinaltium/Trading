@@ -114,11 +114,25 @@ def test_fourth_concurrent_underlying_rejected(limits):
     assert "max_underlyings_concurrent" in result.reason
 
 
-def test_adding_to_an_existing_name_is_not_a_new_underlying(limits):
-    """The cap counts distinct names, not positions. Re-entering SPY when SPY is already
-    open must not be blocked by a cap that is about diversification."""
+def test_re_entry_into_a_held_name_is_refused(limits):
+    """Reversed from the original assertion, deliberately.
+
+    This test used to assert that re-entering a name already held was allowed, on the
+    reasoning that max_underlyings_concurrent counts distinct names and re-entry is not a
+    new name. That is true and was the bug: on the first live session the rulebook mandated
+    the same SPY spread three cycles running, the gate approved all three, and the account
+    held 28 contracts of one directional bet while every diversification rule reported
+    itself satisfied. Three copies of one trade is one bet, not three."""
     account = flat_account(open_underlyings={"SPY", "QQQ", "AAPL"})
-    assert evaluate(condor("SPY"), account, limits).approved
+    result = evaluate(condor("SPY"), account, limits)
+    assert not result.approved
+    assert "one position per underlying" in result.reason
+
+
+def test_a_name_not_yet_held_is_still_allowed(limits):
+    """The rule bars re-entry, not entry. Concentration is the target, not activity."""
+    account = flat_account(open_underlyings={"SPY", "QQQ"})
+    assert evaluate(condor("IWM"), account, limits).approved
 
 
 # --- drawdown and open-risk caps ---------------------------------------------

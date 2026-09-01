@@ -90,6 +90,38 @@ class Spread:
         return max(widths) * OPTION_MULTIPLIER * self.contracts - credit
 
     @property
+    def max_profit(self) -> Optional[float]:
+        """Best case in dollars, the mirror of max_loss.
+
+        Debit spread: the width between the strikes, less what was paid.
+        Credit spread: the credit taken in, which is all a short-premium structure can make.
+        """
+        if not self.legs:
+            return None
+
+        net = self.net_cost_basis
+        if net <= 0:
+            return abs(net)  # credit received is the whole upside
+
+        widths = []
+        for opt_type in ("C", "P"):
+            strikes = sorted(leg.strike for leg in self.legs if leg.option_type == opt_type)
+            if len(strikes) >= 2:
+                widths.append(max(strikes) - min(strikes))
+        if not widths:
+            return None
+        return max(widths) * OPTION_MULTIPLIER * self.contracts - net
+
+    @property
+    def gain_fraction(self) -> Optional[float]:
+        """How much of the best case has already been captured, 0.0 to 1.0. Negative when
+        the position is losing."""
+        best = self.max_profit
+        if not best or best <= 0:
+            return None
+        return self.unrealized_pl / best
+
+    @property
     def loss_fraction(self) -> Optional[float]:
         """How much of the worst case has already happened, 0.0 to 1.0. Negative when the
         position is profitable."""
@@ -177,9 +209,25 @@ def evaluate_exits(spreads: list[Spread], config: Optional[dict] = None) -> list
     """Deterministic stop-loss evaluation. No model is consulted."""
     config = config if config is not None else _load_exit_config()
     stop_at = config.get("stop_loss_pct_of_max_loss")
+    take_at = config.get("take_profit_pct_of_max_profit")
     decisions = []
 
     for spread in spreads:
+        # Take-profit is evaluated BEFORE the stop, because a position cannot be both and
+        # the profitable branch is the one that was missing. Until now the only way out was
+        # a loss: a winner was held until expiry no matter how much of its upside it had
+        # already captured, which meant the agent never realised a gain, never freed the
+        # name for another trade, and never produced a closed winning trade for the
+        # adaptive-restriction streak to count.
+        gain = spread.gain_fraction
+        if take_at is not None and gain is not None and gain >= take_at:
+            decisions.append(ExitDecision(
+                spread, True,
+                f"take-profit: captured {gain:.0%} of max profit (${spread.unrealized_pl:,.2f} "
+                f"of ${spread.max_profit:,.2f}), target {take_at:.0%}",
+            ))
+            continue
+
         fraction = spread.loss_fraction
         if stop_at is None:
             decisions.append(ExitDecision(spread, False, "no stop-loss configured"))

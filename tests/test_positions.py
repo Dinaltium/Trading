@@ -194,3 +194,68 @@ def test_both_sides_of_reconciliation_agree_on_the_root():
         believed = underlying_root(symbol) if len(symbol) > 6 else symbol
         broker = underlying_root(symbol)
         assert believed == broker == expected
+
+
+# --- take-profit -------------------------------------------------------------------------
+# Until this existed the only exit was a loss. A winner was held to expiry no matter how
+# much of its upside it had captured, which meant the agent never realised a gain, never
+# freed the name for another trade under one_position_per_underlying, and never produced a
+# closed winning trade for the adaptive-restriction streak to count.
+
+def _debit_spread(unrealized_pl, paid=200.0, width=4.0):
+    """A 1-contract debit spread: paid `paid` dollars, strikes `width` apart."""
+    from src.positions import Leg, Spread
+    from datetime import date
+
+    return Spread(
+        underlying="SPY",
+        expiry=date(2026, 9, 8),
+        legs=[
+            Leg("SPY260908P00764000", "SPY", date(2026, 9, 8), "P", 764.0, 1, paid, paid + unrealized_pl, unrealized_pl),
+            Leg("SPY260908P00760000", "SPY", date(2026, 9, 8), "P", 764.0 - width, -1, 0.0, 0.0, 0.0),
+        ],
+    )
+
+
+def test_take_profit_closes_a_winner_at_the_target():
+    from src.positions import evaluate_exits
+
+    cfg = {"stop_loss_pct_of_max_loss": 0.60, "take_profit_pct_of_max_profit": 0.50}
+    spread = _debit_spread(unrealized_pl=120.0, paid=200.0, width=4.0)  # max profit 400-200=200
+    decision = evaluate_exits([spread], cfg)[0]
+    assert decision.should_close
+    assert "take-profit" in decision.reason
+
+
+def test_a_winner_below_the_target_is_held():
+    from src.positions import evaluate_exits
+
+    cfg = {"stop_loss_pct_of_max_loss": 0.60, "take_profit_pct_of_max_profit": 0.50}
+    decision = evaluate_exits([_debit_spread(unrealized_pl=40.0)], cfg)[0]
+    assert not decision.should_close
+
+
+def test_take_profit_is_evaluated_before_the_stop():
+    """A position cannot be both, and the profitable branch is the one that was missing."""
+    from src.positions import evaluate_exits
+
+    cfg = {"stop_loss_pct_of_max_loss": 0.60, "take_profit_pct_of_max_profit": 0.50}
+    decision = evaluate_exits([_debit_spread(unrealized_pl=150.0)], cfg)[0]
+    assert decision.should_close
+    assert "take-profit" in decision.reason
+
+
+def test_losers_still_stop_out():
+    from src.positions import evaluate_exits
+
+    cfg = {"stop_loss_pct_of_max_loss": 0.60, "take_profit_pct_of_max_profit": 0.50}
+    decision = evaluate_exits([_debit_spread(unrealized_pl=-150.0)], cfg)[0]
+    assert decision.should_close
+    assert "stop-loss" in decision.reason
+
+
+def test_no_take_profit_configured_falls_back_to_stop_only():
+    from src.positions import evaluate_exits
+
+    cfg = {"stop_loss_pct_of_max_loss": 0.60}
+    assert not evaluate_exits([_debit_spread(unrealized_pl=180.0)], cfg)[0].should_close

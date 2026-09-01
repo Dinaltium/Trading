@@ -4,6 +4,9 @@
 max_loss_per_trade_pct: 0.02       # ≤2% of account equity per trade
 max_total_open_risk_pct: 0.10      # ≤10% of account equity across all open positions
 daily_drawdown_halt_pct: 0.05      # stop trading for the day past this loss
+one_position_per_underlying: true  # no re-entry into a name already held. See risk_gate.py:
+                                   # the first live session stacked three identical SPY
+                                   # spreads because re-entry was exempt from the cap below.
 max_underlyings_concurrent: 3      # diversify across 2-3 names, not all-in. Deliberately
                                    # NOT raised alongside the wider universe below: more
                                    # candidates to choose from is a different thing from more
@@ -76,3 +79,11 @@ exits:
   # usually needs a large move back to recover, and below 1.0 so the position is closed
   # while it still has salvage value rather than expiring worthless.
   stop_loss_pct_of_max_loss: 0.60
+
+  # 0.50 means close once half the best case has been captured. Paired with
+  # one_position_per_underlying, which without an exit for WINNERS would freeze the agent:
+  # hold SPY, never close it except at a loss, and never trade SPY again. Half of max profit
+  # is taken well before expiry on purpose - the last portion of a defined-risk spread's
+  # upside is the slowest and least certain to arrive, and with days rather than months left
+  # in the competition, realised beats theoretical.
+  take_profit_pct_of_max_profit: 0.50

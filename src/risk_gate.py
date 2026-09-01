@@ -110,6 +110,25 @@ def evaluate(proposal: TradeProposal, account: AccountState, limits: Optional[di
         return GateResult(False, f"daily drawdown halt triggered ({account.daily_pnl_pct:.2%})")
 
     already_in_this_name = proposal.underlying in account.open_underlyings
+
+    # One position per name. This flag exists because of what happened on the first live
+    # session: the rulebook mandated the same SPY bear_put_spread on three consecutive
+    # cycles, the gate approved each one, and the account ended up holding 28 contracts of a
+    # single directional bet - 5.2% of equity - before the total-open-risk cap stopped it by
+    # rejecting an IWM entry. Nothing was violated. max_underlyings_concurrent counts
+    # DISTINCT names and deliberately exempted re-entry, so "diversify across 2-3
+    # underlyings" was satisfied by three copies of one trade.
+    #
+    # Concentration is not the same risk as size, and the total cap only bounds the second.
+    # Three identical spreads on one name is one bet in three pieces: they win together and
+    # they lose together, which is the exact opposite of what the diversification rule was
+    # written to buy.
+    if already_in_this_name and limits.get("one_position_per_underlying", True):
+        return GateResult(
+            False,
+            f"already holding {proposal.underlying}; one position per underlying",
+        )
+
     if not already_in_this_name and len(account.open_underlyings) >= limits["max_underlyings_concurrent"]:
         return GateResult(False, f"max_underlyings_concurrent ({limits['max_underlyings_concurrent']}) reached")
 
