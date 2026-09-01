@@ -38,6 +38,7 @@ from src.guards import (
     validate_signals,
 )
 from src.model_adapter import call_claude_code_cli, call_with_retry
+from src.positions import fetch_open_spreads
 from src.risk_gate import AccountState, TradeProposal, evaluate as evaluate_risk, load_limits
 from src.signals.azte import compute_trigger
 from src.signals.direction import train_and_predict
@@ -66,9 +67,26 @@ def get_account_state(trading_client: TradingClient) -> AccountState:
     # Same derivation the broker-state read uses — see alpaca_cli.underlying_root. Two
     # spellings of this produced a set that could never reconcile for a four-letter ticker.
     open_underlyings = {underlying_root(p.symbol) if len(p.symbol) > 6 else p.symbol for p in positions}
-    # crude open-risk proxy: sum of |market_value| for option positions, refined once real
-    # positions exist to track from (currently 0 on a flat dev account)
-    open_risk = sum(abs(float(p.market_value)) for p in positions if getattr(p, "asset_class", None) and "option" in str(p.asset_class).lower())
+    # Open risk is the sum of what the open spreads can actually LOSE, taken from the same
+    # Spread.max_loss the exit logic uses. It used to be sum(|market_value|) across option
+    # legs, which was wrong twice over: it counted the long and short legs of a defined-risk
+    # spread as if both were exposure rather than offsetting, and |market_value| GROWS as a
+    # position gains - so the cap tightened the better the book did. On 2026-09-01 that read
+    # ~$16k against a true max loss of $5,194 and refused a mandated DIA entry for "no room",
+    # locking the agent out of exactly the diversification the cap exists to encourage.
+    #
+    # Falls back to the old proxy if the broker read fails. That proxy overstates risk, so
+    # failing to it is failing closed - fewer trades, never more.
+    spreads, spread_error = fetch_open_spreads()
+    if spread_error:
+        print(f"  -> open-risk: spread read failed ({spread_error}); using conservative proxy")
+        open_risk = sum(
+            abs(float(p.market_value))
+            for p in positions
+            if getattr(p, "asset_class", None) and "option" in str(p.asset_class).lower()
+        )
+    else:
+        open_risk = sum(s.max_loss or 0.0 for s in spreads)
     daily_pnl_pct = (float(acct.equity) - float(acct.last_equity)) / float(acct.last_equity) if float(acct.last_equity) else 0.0
     return AccountState(
         equity=float(acct.equity),

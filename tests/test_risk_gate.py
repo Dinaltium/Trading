@@ -200,3 +200,30 @@ def test_a_spread_with_no_upside_is_declined_not_crashed(limits):
     )
     result = evaluate(proposal, account)  # must not raise
     assert not result.approved
+
+
+def test_open_risk_uses_max_loss_not_market_value(limits):
+    """Regression for a cap that tightened as the book improved.
+
+    open_risk_dollars was sum(|market_value|) across option legs, which counts the long and
+    short sides of a defined-risk spread as if both were exposure, and grows as the position
+    gains. Three SPY spreads with a true max loss of $5,194 read as ~$16k and refused a
+    mandated DIA entry for "no room" — locking the agent out of the diversification the cap
+    exists to encourage. With the real figure there is room; with the inflated one there is not.
+    """
+    from src.risk_gate import AccountState, TradeProposal, evaluate
+
+    def dia(open_risk):
+        proposal = TradeProposal(
+            strategy="bear_put_spread", underlying="DIA",
+            max_profit_per_contract=600.0, max_loss_per_contract=186.0,
+            classifier_win_probability=0.57, iv_rank=40.0, classifier_p_up=0.41,
+        )
+        account = AccountState(
+            equity=101_000.0, open_risk_dollars=open_risk,
+            open_underlyings={"SPY"}, daily_pnl_pct=0.014,
+        )
+        return evaluate(proposal, account, limits)
+
+    assert dia(5_194.0).approved, "true max loss leaves room under the 10% cap"
+    assert not dia(16_000.0).approved, "the inflated proxy is what blocked it"
