@@ -444,3 +444,37 @@ Whichever name is chosen, drop the matching line into `{{TAGLINE}}`.
 - Don't post rival comparisons. It reads badly and adds nothing.
 - Attach the architecture diagram (`docs/architecture.svg`) to at least one LinkedIn post —
   image posts reach further, and it's genuinely good.
+
+---
+
+## Day 5 — the naming post (X)
+
+Ships with a dashboard screenshot. Tag check before posting: **@lablabai @AlpacaHQ**.
+
+```
+It has a name now: Brightline.
+
+A bright-line rule is one that admits no judgment — you are over the line or you are not,
+and no one gets to argue about it. That is what sits between our model and the broker.
+
+Every 15 minutes three models get an identical signal vector. One of them can reach the
+account. The other two are recorded and scored against the same rulebook, so we can mark
+every answer right or wrong the same day instead of waiting weeks for P&L to say something.
+
+167 cycles so far. The models tried to go off-book on 6-25% of them, depending which model.
+None of those reached the broker.
+
+The model has discretion to decline. It has never had discretion to substitute.
+
+Live, read-only, updates itself: alpaca-trade-intelli.vercel.app
+
+@lablabai @AlpacaHQ #BuildInPublic #AITrading
+```
+
+Screenshot to attach: the **Live vs. shadow** section, framed so one cycle card is fully
+visible — the four signal values across the top, then Groq / Featherless / Mistral each with
+their own strategy and full reasoning, and a red `RISK GATE ✕ rejected` with its stated
+reason at the bottom. That single card is the entire thesis in one image: same inputs, three
+different answers, one gate, a refusal with a reason attached.
+
+Take it at desktop width. Do not crop the reasoning text — the length is the point.
