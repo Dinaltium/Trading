@@ -72,7 +72,7 @@ const VIZ_TOKENS = `
 
 function EmptyState({ message }: { message: string }) {
   return (
-    <div className="viz-root rounded-2xl border p-6" style={{ background: "var(--surface-1)" }}>
+    <div className="viz-root rounded-2xl border p-4 sm:p-6" style={{ background: "var(--surface-1)" }}>
       <style>{VIZ_TOKENS}</style>
       <div className="flex h-56 items-center justify-center text-center text-sm text-[var(--text-secondary)]">
         {message}
@@ -149,15 +149,15 @@ export function EquityChart({ records }: { records: CycleRecord[] }) {
   ];
 
   return (
-    <div className="viz-root rounded-2xl border p-6" style={{ background: "var(--surface-1)" }}>
+    <div className="viz-root rounded-2xl border p-4 sm:p-6" style={{ background: "var(--surface-1)" }}>
       <style>{VIZ_TOKENS}</style>
 
-      <div className="mb-4 flex items-baseline justify-between gap-4">
+      <div className="mb-4 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-2">
         <div>
           <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-[var(--muted)]">
             Account equity
           </div>
-          <div className="font-mono text-3xl tabular-nums text-[var(--text-primary)]">
+          <div className="font-mono text-2xl tabular-nums text-[var(--text-primary)] sm:text-3xl">
             ${money(active.equity)}
           </div>
           <div className="font-mono text-[10px] text-[var(--muted)]">

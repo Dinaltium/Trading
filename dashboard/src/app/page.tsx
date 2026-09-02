@@ -4,6 +4,7 @@ import { CycleTable } from "@/components/cycle-table";
 import { ModelComparison } from "@/components/model-comparison";
 import { StatTile } from "@/components/stat-tile";
 import { Separator } from "@/components/ui/separator";
+import { LiveRefresh } from "@/components/live-refresh";
 
 // Read-only dashboard, no forms/buttons that touch the account. Data source is
 // GitHub (see lib/audit.ts), re-fetched with no caching so this always reflects
@@ -23,14 +24,24 @@ export default async function DashboardPage() {
   ).length;
   const liveCycles = records.length;
 
+  // min-w-0 on the wrapper below is load-bearing. <body> is a flex column, so that div is a
+  // flex item, and a flex item's default min-width:auto resolves to its min-content width.
+  // The cycle table's min-content is ~644px, so on a 375px phone the whole page inflated to
+  // 644 and every section overflowed sideways — the table's own overflow-x-auto never got
+  // the chance to scroll, because nothing was ever narrower than the table.
   return (
-    <div className="mx-auto max-w-7xl space-y-8 p-6 sm:p-8">
+    <div className="mx-auto w-full min-w-0 max-w-7xl space-y-8 p-4 sm:p-8">
       <header className="space-y-2 border-b pb-6">
-        <div className="font-mono text-[11px] uppercase tracking-[0.25em] text-muted-foreground">
-          Alpaca AI Trading Agents · Options Alpha
+        {/* The kicker is 40 characters of letter-spaced mono. At 0.25em it needs ~430px and
+            wrapped mid-phrase on every phone; the tracking relaxes until there is room. */}
+        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+          <div className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground sm:text-[11px] sm:tracking-[0.25em]">
+            Alpaca AI Trading Agents · Options Alpha
+          </div>
+          <LiveRefresh />
         </div>
-        <h1 className="text-[1.7rem] font-semibold tracking-tight">
-          Agent Dashboard <span className="font-normal text-muted-foreground">— read-only</span>
+        <h1 className="text-[1.4rem] font-semibold tracking-tight sm:text-[1.7rem]">
+          Brightline <span className="font-normal text-muted-foreground">— read-only</span>
         </h1>
         <p className="max-w-2xl text-[0.95rem] leading-relaxed text-muted-foreground">
           Groq is the only model that reaches order execution — every other model
@@ -42,8 +53,11 @@ export default async function DashboardPage() {
 
       <EquityChart records={records} />
 
-      <div className="grid gap-4 sm:grid-cols-3">
-        <StatTile label="Cycles logged" value={liveCycles} />
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">
+        {/* Three tiles into two columns leaves a hole; the count spans the row instead. */}
+        <div className="col-span-2 sm:col-span-1">
+          <StatTile label="Cycles logged" value={liveCycles} />
+        </div>
         <StatTile label="Risk gate approved" value={approvedCount} tone="good" />
         <StatTile label="Risk gate rejected" value={rejectedCount} tone="critical" />
       </div>
