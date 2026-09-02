@@ -1,0 +1,120 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-09-02T18:15:00Z",
+  "title": "Design System: Brightline",
+  "extensions": {
+    "colorMeta": {
+      "ink": { "role": "primary", "displayName": "Ink", "canonical": "oklch(0.145 0 0)", "tonalRamp": ["#0d0d0d", "#1c1c1c", "#252525", "#3d3d3d", "#5c5c5c", "#8e8e8e", "#c4c4c4", "#f2f2f2"] },
+      "instrument": { "role": "primary", "displayName": "Instrument Black", "canonical": "#101010", "tonalRamp": ["#000000", "#0a0a0a", "#101010", "#1f1f1f", "#3a3a3a", "#6b6b6b", "#a8a8a8", "#e0e0e0"] },
+      "paper": { "role": "neutral", "displayName": "Paper", "canonical": "oklch(1 0 0)", "tonalRamp": ["#2b2b2b", "#4a4a4a", "#6e6e6e", "#949494", "#bcbcbc", "#dedede", "#f4f4f4", "#ffffff"] },
+      "muted-ink": { "role": "neutral", "displayName": "Muted Ink", "canonical": "oklch(0.556 0 0)", "tonalRamp": ["#151515", "#2e2e2e", "#4b4b4b", "#6c6c6c", "#8e8e8e", "#b3b3b3", "#d6d6d6", "#f0f0f0"] },
+      "rule": { "role": "neutral", "displayName": "Hairline", "canonical": "oklch(0.922 0 0)", "tonalRamp": ["#1a1a1a", "#333333", "#525252", "#757575", "#9c9c9c", "#c2c2c2", "#e4e4e4", "#fafafa"] },
+      "approved": { "role": "secondary", "displayName": "Approved Green", "canonical": "#0ca30c", "tonalRamp": ["#032f03", "#054905", "#086508", "#0a8208", "#0ca30c", "#3cc03c", "#7ad97a", "#c6f0c6"] },
+      "rejected": { "role": "secondary", "displayName": "Rejected Red", "canonical": "#d03b3b", "tonalRamp": ["#3a0c0c", "#571414", "#7c1e1e", "#a42c2c", "#d03b3b", "#e66767", "#f09a9a", "#f8d0d0"] },
+      "bull": { "role": "tertiary", "displayName": "Bull Blue", "canonical": "#2a78d6", "tonalRamp": ["#07203f", "#0c3363", "#134a8c", "#1c60b3", "#2a78d6", "#5c9be4", "#95bff0", "#d0e2fa"] },
+      "bear": { "role": "tertiary", "displayName": "Bear Orange", "canonical": "#eb6834", "tonalRamp": ["#3f1706", "#63240b", "#8c3612", "#b8481c", "#eb6834", "#f28f66", "#f8b799", "#fcdccb"] },
+      "condor": { "role": "tertiary", "displayName": "Condor Aqua", "canonical": "#1baf7a", "tonalRamp": ["#052f21", "#084833", "#0d6647", "#13875e", "#1baf7a", "#4fc79b", "#8adcbc", "#c7efdd"] },
+      "abstain": { "role": "tertiary", "displayName": "Abstain Gray", "canonical": "#898781", "tonalRamp": ["#1d1d1b", "#333331", "#4d4c49", "#6a6864", "#898781", "#a9a7a2", "#c9c8c4", "#e8e7e5"] }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display", "purpose": "The page title. One per page." },
+      "headline": { "displayName": "Headline", "purpose": "Section headings, deliberately close to body size." },
+      "body": { "displayName": "Body", "purpose": "Human prose and model reasoning. Capped around 65ch." },
+      "numeric": { "displayName": "Numeric", "purpose": "Machine-produced figures. Tabular, always." },
+      "label": { "displayName": "Label", "purpose": "Field labels, tickers, verdicts, timestamps." }
+    },
+    "shadows": [],
+    "motion": [
+      { "name": "state", "value": "150ms cubic-bezier(0.22, 1, 0.36, 1)", "purpose": "Hover and focus on interactive elements. Nothing on this page animates on entrance." }
+    ],
+    "breakpoints": [
+      { "name": "sm", "value": "640px" },
+      { "name": "md", "value": "768px" },
+      { "name": "xl", "value": "1280px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Verdict Badge - rejected",
+      "kind": "chip",
+      "refersTo": "verdict-rejected",
+      "description": "A risk-gate refusal. Word and glyph always travel with the colour.",
+      "html": "<span class=\"ds-verdict-rejected\">✕ rejected</span>",
+      "css": ".ds-verdict-rejected { display: inline-flex; align-items: center; gap: 4px; border-radius: 9999px; padding: 2px 8px; font-family: 'Geist Mono', ui-monospace, monospace; font-size: 11px; font-weight: 500; color: #d03b3b; background: rgba(208, 59, 59, 0.08); }"
+    },
+    {
+      "name": "Verdict Badge - approved",
+      "kind": "chip",
+      "refersTo": "verdict-approved",
+      "description": "A risk-gate approval.",
+      "html": "<span class=\"ds-verdict-approved\">✓ approved</span>",
+      "css": ".ds-verdict-approved { display: inline-flex; align-items: center; gap: 4px; border-radius: 9999px; padding: 2px 8px; font-family: 'Geist Mono', ui-monospace, monospace; font-size: 11px; font-weight: 500; color: #0ca30c; background: rgba(12, 163, 12, 0.08); }"
+    },
+    {
+      "name": "Strategy Badge",
+      "kind": "chip",
+      "refersTo": "strategy-badge",
+      "description": "Fixed categorical identity. The dot carries identity, the text carries the name.",
+      "html": "<span class=\"ds-strategy\"><span class=\"ds-strategy-dot\"></span>Bear put spread</span>",
+      "css": ".ds-strategy { display: inline-flex; align-items: center; gap: 6px; border-radius: 9999px; border: 1px solid rgba(37,37,37,0.10); padding: 2px 10px; font-family: 'Geist Mono', ui-monospace, monospace; font-size: 11px; font-variant-numeric: tabular-nums; color: #252525; } .ds-strategy-dot { display: inline-block; height: 8px; width: 8px; border-radius: 9999px; background: #eb6834; }"
+    },
+    {
+      "name": "Stat Tile - critical",
+      "kind": "card",
+      "refersTo": "stat-tile-critical",
+      "description": "Gate-rejection count. Tonal tint as ground, full strength as numeral.",
+      "html": "<div class=\"ds-stat-critical\"><div class=\"ds-stat-label\">RISK GATE REJECTED</div><div class=\"ds-stat-value\">86</div></div>",
+      "css": ".ds-stat-critical { border: 1px solid #e4e4e4; border-radius: 0.625rem; padding: 16px; background: rgba(208,59,59,0.06); } .ds-stat-label { font-family: 'Geist Mono', ui-monospace, monospace; font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.15em; color: #8e8e8e; margin-bottom: 6px; } .ds-stat-value { font-family: 'Geist Mono', ui-monospace, monospace; font-size: 1.75rem; font-weight: 600; font-variant-numeric: tabular-nums; color: #d03b3b; }"
+    },
+    {
+      "name": "Instrument Panel",
+      "kind": "custom",
+      "refersTo": "instrument-panel",
+      "description": "The one dark surface on the page. Live account state only.",
+      "html": "<div class=\"ds-instrument\"><div class=\"ds-instrument-label\">ACCOUNT EQUITY</div><div class=\"ds-instrument-value\">$99,792.58</div><div class=\"ds-instrument-meta\">latest · Sep 2, 03:15 PM ET</div></div>",
+      "css": ".ds-instrument { background: #101010; color: #ffffff; border-radius: 0.625rem; padding: 32px; } .ds-instrument-label { font-family: 'Geist Mono', ui-monospace, monospace; font-size: 11px; text-transform: uppercase; letter-spacing: 0.15em; color: #8a8a8a; } .ds-instrument-value { font-family: 'Geist Mono', ui-monospace, monospace; font-size: 2rem; font-weight: 600; font-variant-numeric: tabular-nums; margin-top: 4px; } .ds-instrument-meta { font-family: 'Geist Mono', ui-monospace, monospace; font-size: 11px; color: #8a8a8a; margin-top: 4px; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Flight Recorder",
+    "overview": "An instrument that records everything and argues with nothing. Brightline's interface exists to show what an autonomous agent did and why, including the cycles where it did nothing. The page is a white document with one dark instrument set into it. Prose is set in Geist and reads as writing; every value a machine produced is monospaced and reads as a readout. That split is the primary organising device, ahead of color, ahead of layout.",
+    "keyCharacteristics": [
+      "One dark surface on an otherwise white page, reserved for live account state",
+      "Machine values monospaced and tabular; human prose in Geist",
+      "Status color only ever means state, never category or emphasis",
+      "Reasoning shown in full, never truncated or clamped",
+      "Flat by default: hairlines and tonal tint carry depth, not shadow"
+    ],
+    "rules": [
+      { "name": "The Single Instrument Rule", "body": "Exactly one surface on the page is dark: the account-equity panel. No other card, section, or container may invert.", "section": "colors" },
+      { "name": "The Status-Is-Not-Category Rule", "body": "Green and red mean approved and rejected. They are forbidden as series colors, as sentiment, and as emphasis.", "section": "colors" },
+      { "name": "The Meaning-Only Rule", "body": "Saturation appears only where it carries information. A colored element that would look the same in gray without losing meaning must be gray.", "section": "colors" },
+      { "name": "The Two Voices Rule", "body": "If a machine produced it, it is monospaced. If a person wrote it, it is not. No third category, no exceptions for aesthetics.", "section": "typography" },
+      { "name": "The Full Reasoning Rule", "body": "Model justifications are never truncated, clamped, ellipsised, or hidden behind a show-more. The length and the disagreement are the content.", "section": "typography" },
+      { "name": "The Hairline Rule", "body": "Borders are 1px. A 2px border, or a colored border used as an accent stripe on one edge, is prohibited outright.", "section": "elevation" },
+      { "name": "The No-Ghost-Card Rule", "body": "A 1px border and a soft wide shadow on the same element is banned. A surface gets a hairline or a tonal tint, never both, never a shadow.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do monospace every machine-produced value and set every human sentence in Geist.",
+      "Do keep exactly one dark surface on the page, the equity panel.",
+      "Do show model reasoning at full length, always.",
+      "Do pair every status color with its word and glyph.",
+      "Do use tabular-nums on every figure that updates in place.",
+      "Do render an untrusted signal as an em dash or the word untrusted, never as a number.",
+      "Do state timestamps in US market time, labelled.",
+      "Do treat a refusal as content, with the same visual weight as a trade."
+    ],
+    "donts": [
+      "Don't render an untrusted IV Rank as 0.0.",
+      "Don't render timestamps in IST on a US-market dashboard.",
+      "Don't use green for profit or red for loss. Those are gate verdicts here.",
+      "Don't introduce a second dark surface, a shadow, or a border above 1px.",
+      "Don't pair a 1px border with a wide soft shadow on the same element.",
+      "Don't exceed 0.625rem radius on a card. Pills are for badges only.",
+      "Don't reach for the trading-bot register: neon-green candles, glowing gauges, leaderboard energy, AI-POWERED badges.",
+      "Don't reach for fintech navy-and-gold, or trust-by-decoration of any kind.",
+      "Don't use gradient text, glassmorphism, hero metrics, or an uppercase tracked eyebrow above every section.",
+      "Don't style the agent as clever. It is constrained, and the interface should read that way."
+    ]
+  }
+}
