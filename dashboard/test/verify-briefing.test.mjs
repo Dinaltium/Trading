@@ -25,6 +25,8 @@ const cases = [
   ["rounded restatement (should PASS)", "Equity stands at about $99,433 today.", true],
   ["word numbers (should FAIL)", "It compared seven language models this session.", false],
   ["unicode minus (should PASS)", "A move of −567.42, or −0.57 %.", true],
+  ["worded remainder, all figures real (should FAIL)", "It proposed 60 trades, the gate approved 2, refusing the remaining 59.", false],
+  ["innocent use of remaining (should PASS)", "The remaining 2 spreads expire next week.", true],
 ];
 const { verifyBriefing } = await import("../verify-compiled.mjs");
 let pass = 0;

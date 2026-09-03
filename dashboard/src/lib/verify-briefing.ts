@@ -20,6 +20,27 @@ const WORD_NUMBERS: Record<string, number> = {
   thousand: 1000,
 };
 
+// Numbers are not the only way to state something untrue. Two models, independently, have
+// now written that the refusals were "the remaining" of the proposals — 60 proposals, 2
+// approved, "the remaining 59 refused". Every figure in that sentence is real and the digit
+// scan passes it happily; the invented part is the relationship, which implies 58 and is
+// wrong because gate verdicts and proposals are different populations. So subtraction
+// asserted in words is checked as well as subtraction performed in digits.
+const FORBIDDEN_RELATIONS = [
+  /\bthe remaining\b/i,
+  /\bthe other\b/i,
+  /\brest of (?:the|them)\b/i,
+  /\bleftover\b/i,
+  /\bthe rest were\b/i,
+];
+
+/** True when a sentence both claims a remainder and talks about the gate's verdicts. Either
+ *  alone is fine — "the remaining spreads expire next week" is a legitimate sentence. */
+function assertsRemainder(sentence: string): boolean {
+  if (!/refus|approv|reject/i.test(sentence)) return false;
+  return FORBIDDEN_RELATIONS.some((re) => re.test(sentence));
+}
+
 export type Verification = {
   ok: boolean;
   /** Numbers found in the prose that match nothing the model was given. */
@@ -107,6 +128,14 @@ export function verifyBriefing(text: string, facts: unknown): Verification {
     if (value === undefined) continue;
     checked += 1;
     if (!matches(value)) unverified.push(word);
+  }
+
+  for (const sentence of seen.split(/(?<=[.!?])\s+/)) {
+    if (assertsRemainder(sentence)) {
+      unverified.push('claims a remainder between proposals and verdicts ("' +
+        sentence.trim().slice(0, 60) + '…")');
+      break;
+    }
   }
 
   return { ok: unverified.length === 0, unverified: [...new Set(unverified)], checked };

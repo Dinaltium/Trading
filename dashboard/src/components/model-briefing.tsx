@@ -59,8 +59,8 @@ export function ModelBriefing() {
             Ask the model to explain this
           </span>
           <span className="mt-1 block text-sm text-muted-foreground">
-            The live model reads the figures above and says what they mean. Written by the
-            model, not computed — expand to read it.
+            A language model reads the figures above and says what they mean, checked against
+            the record before it is shown. Written by the model, not computed.
           </span>
         </span>
         <span
@@ -80,7 +80,8 @@ export function ModelBriefing() {
       >
         {state.kind === "loading" && (
           <p className="font-mono text-[11px] uppercase tracking-[0.15em] text-muted-foreground">
-            asking the model…
+            asking the model… every figure in the reply is then checked against the record
+            before any of it is shown
           </p>
         )}
 

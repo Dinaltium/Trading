@@ -18,8 +18,22 @@ import { verifyBriefing } from "@/lib/verify-briefing";
 
 export const dynamic = "force-dynamic";
 
-const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
-const MODEL = "openai/gpt-oss-120b"; // the same model that trades — see PROVIDERS in src/model_adapter.py
+// Featherless, not the live trading provider. The briefing is commentary, not execution, and
+// having it written by a model that cannot reach the broker makes that separation visible:
+// the model narrating the account is structurally incapable of acting on it.
+//
+// Qwen2.5-7B-Instruct, not the Qwen3.5-9B the shadow benchmark uses. 3.5 is a reasoning
+// model and spends its budget there rather than on the answer: measured at ~5,600 reasoning
+// tokens and an EMPTY reply against this prompt at a 4,000-token cap, ~39s when it did
+// answer, and "/no_think" does not suppress it. 2.5-Instruct returns the same content in 8
+// seconds with no reasoning pass at all. A briefing nobody waits for is a briefing nobody
+// reads, and this one is behind a button a judge presses.
+const API_URL = "https://api.featherless.ai/v1/chat/completions";
+const API_KEY_ENV = "FEATHER_API_KEY";
+const MODEL = "Qwen/Qwen2.5-7B-Instruct";
+const MAX_TOKENS = 900;
+const REQUEST_TIMEOUT_MS = 40_000;
+const TOTAL_BUDGET_MS = 90_000;
 
 const SYSTEM = `You are explaining an autonomous options-trading agent's current state to a
 visitor who has never seen it before and may not trade options.
@@ -54,10 +68,10 @@ words. Address the reader directly. Be plain, not promotional.`;
 let cache: { key: string; text: string; at: number; checked: number } | null = null;
 
 export async function GET() {
-  const key = process.env.GROQ_API_KEY;
+  const key = process.env[API_KEY_ENV];
   if (!key) {
     return NextResponse.json(
-      { error: "No GROQ_API_KEY configured on this deployment." },
+      { error: `No ${API_KEY_ENV} configured on this deployment.` },
       { status: 503 }
     );
   }
@@ -112,20 +126,22 @@ export async function GET() {
   // Two attempts, then closed. The second is told exactly which figures failed, because a
   // model that invented one number will usually not invent the same one twice when shown it.
   let lastFailure: string[] = [];
+  const deadline = Date.now() + TOTAL_BUDGET_MS;
   for (let attempt = 0; attempt < 2; attempt += 1) {
+    // A second attempt is only worth having if there is time left to serve it.
+    if (attempt > 0 && Date.now() > deadline - REQUEST_TIMEOUT_MS) break;
   try {
-    const res = await fetch(GROQ_URL, {
+    const res = await fetch(API_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
       body: JSON.stringify({
         model: MODEL,
         temperature: attempt === 0 ? 0.3 : 0,
-        // This model emits a separate `reasoning` field before any content, and both are
-        // drawn from the same budget. At 500 the budget was spent thinking and the reply
-        // came back with an empty content string and finish_reason "length" — which the UI
+        // Both models tried here emit a separate `reasoning` field before any content, and
+        // both draw on the same budget. Too small a budget is spent thinking and the reply
+        // arrives with an empty content string and finish_reason "length" — which the UI
         // correctly reported as "returned nothing usable", because it was.
-        max_tokens: 1500,
-        reasoning_effort: "low",
+        max_tokens: MAX_TOKENS,
         messages: [
           { role: "system", content: SYSTEM },
           { role: "user", content: JSON.stringify(facts, null, 1) },
@@ -143,7 +159,7 @@ export async function GET() {
             : []),
         ],
       }),
-      signal: AbortSignal.timeout(25_000),
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     });
 
     if (!res.ok) {
