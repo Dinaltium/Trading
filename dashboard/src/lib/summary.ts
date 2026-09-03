@@ -14,6 +14,8 @@ const START_EQUITY = 100_000;
 
 export type SessionSummary = {
   sessionLabel: string;
+  latestSessionIsToday: boolean;
+  todayInMarketTime: string;
   cyclesToday: number;
   underlyings: string[];
   proposed: number;
@@ -109,6 +111,16 @@ export function buildSummary(records: CycleRecord[]): SessionSummary | null {
 
   return {
     sessionLabel: latestDay,
+    // "the latest session" and "today" are the same thing only while a session is running.
+    // Between the close and the next open — which is most of the clock — the newest record is
+    // yesterday's, and anything that calls it today is wrong. Compared in market time, since
+    // that is the calendar the sessions are on.
+    latestSessionIsToday:
+      latestDay ===
+      new Date().toLocaleDateString("en-CA", { timeZone: "America/New_York" }),
+    todayInMarketTime: new Date().toLocaleDateString("en-CA", {
+      timeZone: "America/New_York",
+    }),
     cyclesToday: today.length,
     underlyings: [...new Set(today.map((r) => r.underlying))].sort(),
     proposed: proposals.length,

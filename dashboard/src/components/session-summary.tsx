@@ -35,8 +35,9 @@ export function SessionSummary({ records }: { records: CycleRecord[] }) {
       <p className="mt-3 max-w-3xl text-[0.95rem] leading-relaxed text-foreground/85">
         The agent has run <Fig>{s.totalCycles}</Fig> decision cycles over{" "}
         <Fig>{days}</Fig> {days === 1 ? "day" : "days"}, and{" "}
-        <Fig>{s.cyclesToday}</Fig> of them in the session of{" "}
-        <Fig>{s.sessionLabel}</Fig> across {s.underlyings.join(", ")}. Equity stands at{" "}
+        <Fig>{s.cyclesToday}</Fig> of them in{" "}
+        {s.latestSessionIsToday ? "today's session" : "its most recent session"},{" "}
+        <Fig>{s.sessionLabel}</Fig>, across {s.underlyings.join(", ")}. Equity stands at{" "}
         <Fig>{money(s.equityNow)}</Fig>
         {sinceOpen != null && (
           <>
@@ -59,7 +60,7 @@ export function SessionSummary({ records }: { records: CycleRecord[] }) {
       </p>
 
       <p className="mt-3 max-w-3xl text-[0.95rem] leading-relaxed text-foreground/85">
-        This session the live model asked to trade on <Fig>{s.proposed}</Fig>{" "}
+        In that session the live model asked to trade on <Fig>{s.proposed}</Fig>{" "}
         {s.proposed === 1 ? "cycle" : "cycles"}. The risk gate returned a verdict{" "}
         <Fig>{s.approved + s.refused}</Fig> times (it also rules on cycles the model sat
         out), approving <Fig>{s.approved}</Fig> and refusing <Fig>{s.refused}</Fig>
@@ -90,7 +91,7 @@ export function SessionSummary({ records }: { records: CycleRecord[] }) {
       <p className="mt-3 max-w-3xl text-[0.95rem] leading-relaxed text-foreground/85">
         Three models saw the same signal vector every cycle and one of them could execute.
         They landed on different answers in <Fig>{s.disagreedToday}</Fig> of{" "}
-        <Fig>{s.scoredToday}</Fig> scored cycles this session
+        <Fig>{s.scoredToday}</Fig> scored cycles in that session
         {s.scoredToday > 0 && (
           <>
             {" "}

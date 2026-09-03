@@ -95,7 +95,17 @@ function normalise(text: string): string {
     .replace(/(\d),(?=\d{3}\b)/g, "$1");
 }
 
-export function verifyBriefing(text: string, facts: unknown): Verification {
+/** opts.forbidToday is set when the newest session in the data is not the current one. The
+ *  prompt already says so and the model ignores it: told the figures describe the most recent
+ *  session and that it is not today, it still opened with "Today, the agent made 60
+ *  proposals" and went on to say "in today's session". The date was right in between. A rule
+ *  the model is asked to follow is worth something; a rule the server enforces is worth more.
+ */
+export function verifyBriefing(
+  text: string,
+  facts: unknown,
+  opts: { forbidToday?: boolean } = {}
+): Verification {
   const allowed = allowedValues(facts);
   const seen = normalise(text);
   const unverified: string[] = [];
@@ -128,6 +138,10 @@ export function verifyBriefing(text: string, facts: unknown): Verification {
     if (value === undefined) continue;
     checked += 1;
     if (!matches(value)) unverified.push(word);
+  }
+
+  if (opts.forbidToday && /\btoday'?s?\b/i.test(seen)) {
+    unverified.push('calls the latest session "today" when it is not today');
   }
 
   for (const sentence of seen.split(/(?<=[.!?])\s+/)) {

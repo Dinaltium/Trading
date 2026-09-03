@@ -29,6 +29,19 @@ const cases = [
   ["innocent use of remaining (should PASS)", "The remaining 2 spreads expire next week.", true],
 ];
 const { verifyBriefing } = await import("../verify-compiled.mjs");
+
+// The "today" rule is opt-in, so it is exercised separately from the table above.
+{
+  const stale = "Today the agent made 60 proposals in its most recent session.";
+  const fresh = "In its most recent session the agent made 60 proposals.";
+  const a = verifyBriefing(stale, facts, { forbidToday: true });
+  const b = verifyBriefing(fresh, facts, { forbidToday: true });
+  const c = verifyBriefing(stale, facts, { forbidToday: false });
+  console.log(`${a.ok === false ? "ok  " : "FAIL"}  says "today" when the session is not today (should FAIL) -> ok=${a.ok}`);
+  console.log(`${b.ok === true ? "ok  " : "FAIL"}  avoids "today" (should PASS) -> ok=${b.ok}`);
+  console.log(`${c.ok === true ? "ok  " : "FAIL"}  says "today" when it IS today (should PASS) -> ok=${c.ok}`);
+  console.log();
+}
 let pass = 0;
 for (const [name, text, expectOk] of cases) {
   const v = verifyBriefing(text, facts);

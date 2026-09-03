@@ -57,8 +57,12 @@ Rules, in order of importance:
    of them can execute; the other two are recorded and scored and NEVER influence the gate,
    the sizing, or any order. Do not write that their agreement or disagreement feeds the
    gate's verdict — it does not, and that is the point of recording them.
-7. strategy_mix counts what the live model PROPOSED this session. It is not a list of open
-   positions and must never be described as what the agent currently holds.
+7. strategy_mix counts what the live model PROPOSED in the latest session. It is not a list
+   of open positions and must never be described as what the agent currently holds.
+8. The figures describe latest_session_date, which is the most recent session with data. Call
+   it "today" ONLY if latest_session_is_today is true. Otherwise say "its most recent
+   session" or name the date. Markets are shut for most of the clock, so the latest session
+   is usually not today, and writing otherwise states something false.
 
 Three short paragraphs, plain prose, no headings, no bullet points, no markdown. Around 130
 words. Address the reader directly. Be plain, not promotional.`;
@@ -86,8 +90,14 @@ export async function GET() {
     facts = {
       days_running: daysRunning(s.firstSeen),
       total_cycles: s.totalCycles,
-      session_date: s.sessionLabel,
-      cycles_this_session: s.cyclesToday,
+      // Named "latest_session", never "today". Handed a key called session_date, the model
+      // wrote "Today is September 2, 2026" at 05:49 UTC on September 3 — the figure was
+      // right and the word was wrong, and that is the field name's fault rather than the
+      // model's.
+      latest_session_date: s.sessionLabel,
+      today_in_market_time: s.todayInMarketTime,
+      latest_session_is_today: s.latestSessionIsToday,
+      cycles_in_latest_session: s.cyclesToday,
       underlyings: s.underlyings,
       equity_now: s.equityNow,
       equity_at_session_open: s.equityOpen,
@@ -96,7 +106,7 @@ export async function GET() {
       pct_since_inception: +(((s.equityNow - INCEPTION_EQUITY) / INCEPTION_EQUITY) * 100).toFixed(2),
       all_time_high: s.peak,
       all_time_low: s.trough,
-      proposals_this_session: s.proposed,
+      proposals_in_latest_session: s.proposed,
       gate_verdicts_total: s.approved + s.refused,
       gate_approved: s.approved,
       gate_refused: s.refused,
@@ -185,7 +195,9 @@ export async function GET() {
 
     // The gate for prose. Same shape as the risk gate on the trading side: the model
     // proposes, something deterministic decides whether it is allowed through.
-    const check = verifyBriefing(text, facts);
+    const check = verifyBriefing(text, facts, {
+      forbidToday: !facts.latest_session_is_today,
+    });
     if (!check.ok) {
       lastFailure = check.unverified;
       continue;
