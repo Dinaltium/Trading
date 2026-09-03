@@ -5,6 +5,7 @@ import { ModelComparison } from "@/components/model-comparison";
 import { StatTile } from "@/components/stat-tile";
 import { Separator } from "@/components/ui/separator";
 import { LiveRefresh } from "@/components/live-refresh";
+import { SessionSummary } from "@/components/session-summary";
 
 // Read-only dashboard, no forms/buttons that touch the account. Data source is
 // GitHub (see lib/audit.ts), re-fetched with no caching so this always reflects
@@ -50,6 +51,8 @@ export default async function DashboardPage() {
           LLM math.
         </p>
       </header>
+
+      <SessionSummary records={records} />
 
       <EquityChart records={records} />
 
