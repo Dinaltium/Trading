@@ -1,19 +1,27 @@
 # Brightline — video script
 
-**Length: 5:00 in the standard cut.** Walk-and-talk to camera, quick cuts, screen-grabs beside
-the presenter, physical sketches acting out each mechanism.
+**Three cuts, timed honestly.** Alpaca's guidance was "no hard requirements... about 5 mins".
 
-Timed at 150 words per minute plus sketch action, the full script below runs about **6:15**.
-Section 8 (the thermometer) is marked OPTIONAL and cutting it lands the standard cut at
-**5:00** — it is the only section that is not load-bearing for the three things Alpaca's
-mentor asked the video to cover. Alpaca said "no hard requirements... about 5 mins", so the
-6:15 version is defensible if it plays better; do not go past that.
+| Cut | Drop | Spoken | With sketch action |
+|---|---|---|---|
+| **Tight** | sections 8 and 4 | 677w | **~5:00** |
+| **Standard** *(recommended)* | section 8 | 786w | **~6:00** |
+| **Full** | nothing | 895w | ~6:50 |
+
+Measured at 150 words per minute plus roughly 45 seconds of sketch action, not guessed. The
+**standard cut** is the one to shoot: 6:00 is comfortably inside "about 5 mins", and the two
+sections the tight cut drops are the two most memorable in the video. Only go tight if
+something on the day forces it.
 
 **Why this structure.** Alpaca's mentor said the video should "walk through the agent: the
 options path, how it talks to Alpaca, and the risk gates." So the spine is **one cycle, start
 to finish**, and every sketch hangs off the point in that cycle where it belongs. A judge who
-has never seen the repo should be able to follow the path of a single decision from signal to
-broker, and know at each step what could have stopped it.
+has never seen the repo should be able to follow one decision from signal to broker, and know
+at each step what could have stopped it.
+
+**Say it, don't read it.** Every spoken line is written to be said out loud while walking —
+no "signal vector", no "isotonic-calibrated", no "defined-risk". If a line makes you stumble
+on the day, say it your way; the claims are what matter, not the wording.
 
 **The rule that makes this work:** every sketch dramatises something that genuinely exists in
 the repo. The bottle is Guard 2. The menu is the rulebook. The brake is the kill switch. If a
@@ -40,15 +48,15 @@ panel on the dashboard's right-hand side.
 
 **Shot:** mid-walk, already talking. No title card yet.
 
-> **RAFAN:** "Ask any AI for a trade right now and it'll give you one. Confident. Cites the
-> Greeks. Sounds brilliant.
+> **RAFAN:** "Ask any AI for a trade right now, it'll give you one. Sounds confident.
+> Sounds clever.
 >
-> And nothing checked whether a single word of it was true."
+> And nothing checked if a single word of it was true."
 
 **Overlay:** a chat bubble — *"Strong bullish setup, IV rank 82, recommend call spread"* —
 then a red stamp: **UNVERIFIED**
 
-> **RAFAN:** "We built the part that checks. It's called Brightline."
+> **RAFAN:** "So we built the part that checks. It's called Brightline."
 
 *Title card:* **BRIGHTLINE** — *a bright-line rule admits no judgment. Neither does ours.*
 
@@ -59,23 +67,20 @@ then a red stamp: **UNVERIFIED**
 **Shot:** walking. Overlay: a clean five-step strip that stays on screen, lighting up as he
 names each step — **SIGNALS → MODEL → RULEBOOK → RISK GATE → BROKER**
 
-> **RAFAN:** "Every fifteen minutes, one cycle, on four index ETFs.
+> **RAFAN:** "Every fifteen minutes, one cycle, across four funds.
 >
-> It builds its own signals first — a LightGBM classifier, retrained every cycle, gives the
-> probability the underlying rises. Alongside it, implied-volatility rank from our own
-> recorded history.
+> It works out two numbers for itself. How likely is this to go up — that's a small model we
+> retrain every cycle. And are options expensive right now, against their own recent history.
 >
-> Those two numbers pick the structure. Bullish, bearish, neutral-with-expensive-volatility,
-> or nothing.
+> Those two numbers pick the shape of the trade. Up, down, sideways, or nothing.
 >
-> All of them are **defined-risk spreads** — legs bought and sold together, maximum loss known
-> before the order exists. No naked options, no single legs. That's the whole universe it can
-> touch."
+> Every shape is a **spread** — buy one option, sell another at the same time. Do that and the
+> worst case is locked in before you place the order. That's the only trade it can make."
 
 **Overlay:** the four strategy names, with `MAX LOSS: KNOWN` under each.
 
-> **RAFAN:** "Then the model gets asked. And this is where it gets interesting, because the
-> model is the *least* trusted component in the system."
+> **RAFAN:** "*Then* it asks the AI. And that's the interesting bit — because the AI is the
+> part we trust least."
 
 ---
 
@@ -92,16 +97,15 @@ names each step — **SIGNALS → MODEL → RULEBOOK → RISK GATE → BROKER**
 
 **He drinks. Beat. Collapses out of frame. Hard cut — he pops back up, fine.**
 
-> **RAFAN:** "That's what happens when a model reports its own inputs.
+> **RAFAN:** "That's what happens when you let the AI tell you what the numbers were.
 >
-> Four guards run before an answer counts. The important one: every number the model quotes is
-> checked against the numbers we handed it. Quote a figure you were never given, the trade dies
-> before it exists."
+> So four checks run before its answer counts. The one that matters: every number it mentions
+> gets compared against the numbers we actually gave it. Make one up, the trade is dead."
 
 **Overlay:** `guards.py`, one line highlighted.
 
-> **RAFAN:** "Note what that guard is *not*. It doesn't ask another AI whether the first AI
-> was lying. That'd be circular. It's arithmetic."
+> **RAFAN:** "And notice — we don't ask a second AI whether the first one lied. That's just
+> the same problem twice. It's arithmetic."
 
 **Masked man reappears with the bottle. Rafan doesn't look. Red **REJECTED** stamp drops over him.**
 
@@ -125,13 +129,13 @@ names each step — **SIGNALS → MODEL → RULEBOOK → RISK GATE → BROKER**
 
 **Cut to walking.**
 
-> **RAFAN:** "Signals go in, and exactly one strategy is permitted. The model can take it, or
-> decline. It cannot invent a third option.
+> **RAFAN:** "That's our rulebook. The numbers go in, and exactly one trade comes out as
+> allowed. The AI can take it, or it can say no. It cannot pick something else.
 >
-> And after it answers, we recompute the mandated strategy *again*, in plain Python, from the
-> raw numbers — not from the model's summary of them. If they don't match, rejected.
+> And after it answers, we work the allowed trade out *again* ourselves, in plain code, from
+> the original numbers — not from whatever the AI said about them. Don't match? Thrown out.
 >
-> Discretion to decline. Never to substitute."
+> It can say no. It can never say *instead*."
 
 **Overlay:** a real audit record — model chose `iron_condor`, rulebook mandated `cash`,
 verdict `off-rulebook`.
@@ -142,26 +146,24 @@ verdict `off-rulebook`.
 
 **Shot:** walking. Overlay: terminal, real commands.
 
-> **RAFAN:** "Now the part that reaches the market.
+> **RAFAN:** "Now — how it reaches the market.
 >
-> No SDK. Every order goes through Alpaca's own CLI as a subprocess — it's built for exactly
-> this, long-running agent sessions and cron jobs, and it means the command that hit the
-> broker is a string we can print into the log verbatim."
+> Every order goes through Alpaca's own command-line tool, which is built for bots running on
+> a schedule. Best part: the exact command that hit the broker is text, so it goes in our log."
 
 **Overlay:** the real logged command —
 `alpaca order submit --order-class mleg --qty 14 --type limit --limit-price 1.42 --legs [...]`
 
-> **RAFAN:** "`mleg` — multi-leg. All legs fill together or none do. You can never end up
-> holding half a spread with unlimited risk on the other side.
+> **RAFAN:** "See `mleg` — multi-leg. Both sides fill together or neither does. You can't end
+> up holding half a trade with the dangerous half missing.
 >
-> And before any order is built, `alpaca doctor` runs out of process and confirms the endpoint
-> is paper. Fails, the job dies. This agent cannot discover it was pointed at a live account
-> after the fact."
+> And before it builds any order, it checks it's pointed at a paper account. If that fails, the
+> job stops. It can't find out afterwards that it was trading real money."
 
 **Overlay:** `alpaca doctor` output, `paper-api.alpaca.markets` highlighted.
 
-> **RAFAN:** "Sizing is quarter-Kelly off the classifier's probability, capped at two percent
-> of equity. The model is never asked how confident it is. It doesn't size anything."
+> **RAFAN:** "Size comes from our own model, never more than two percent of the account. We
+> never ask the AI how confident it feels. It doesn't decide how much money moves."
 
 ---
 
@@ -169,23 +171,23 @@ verdict `off-rulebook`.
 
 **Shot:** walking, faster energy. Then cut to the live dashboard.
 
-> **RAFAN:** "Here's the part I haven't seen anyone else do.
+> **RAFAN:** "Here's the bit I haven't seen anyone else do.
 >
-> Every cycle, *three* AI models get the same signal vector. One can trade. The other two are
-> recorded and scored, and never touch the account.
+> Every cycle, *three* different AIs get the same numbers. One is allowed to trade. The other
+> two get marked and never touch the account.
 >
-> Because the rulebook is a pure function of those same signals, every answer is markable right
-> or wrong **immediately**. Compliance is measurable today. Profit isn't."
+> Because our rulebook is just a calculation, we can mark all three right or wrong **the same
+> day**. Whether they follow the rules, we can measure now. Whether they make money, nobody
+> can measure in a week."
 
 **Overlay:** the live activity feed, scrolling — one line visible showing the live model
 choosing `cash` while both shadows chose `bear put spread`.
 
-> **RAFAN:** "There it is. Live model says cash, both shadows say bear put spread. Same
-> inputs, three answers.
+> **RAFAN:** "There. The live one says do nothing. The other two want to bet the market drops.
+> Same numbers, three answers.
 >
-> Across the run, the models tried to go off-book on between six and twenty-five percent of
-> cycles depending which model. **None of those ever reached the broker.** Not our opinion —
-> it's counted, in a public log, in the repo."
+> Across the week they tried to break the rules on six to twenty-five percent of cycles,
+> depending which one. **Not one got through.** Counted, in a log anyone can open."
 
 ---
 
@@ -197,18 +199,18 @@ choosing `cash` while both shadows chose `bear put spread`.
 
 **Prateek squeezes the brake. Rafan stops dead.**
 
-> **RAFAN:** "That's the kill switch. Closes every position, cancels every resting order,
-> stops. A human can hit it any time."
+> **RAFAN:** "That's the kill switch. Closes everything, cancels everything, stops. Any of us
+> can hit it, any time."
 
 **Prateek mimes turning a steering wheel. Rafan doesn't turn. Prateek turns harder. Nothing.**
 
-> **RAFAN:** "But that's *all* he gets. He can stop me. He cannot steer me.
+> **RAFAN:** "But that's *all* he gets. He can stop me. He can't steer me.
 >
-> Nobody approves a trade. Nobody picks an underlying. Two independent schedulers start the
-> sessions, so a human never has to notice a missed trigger. The dashboard is read-only —
-> the one write it exposes is that brake.
+> Nobody approves a trade. Nobody picks what it trades. Two separate timers start it every
+> morning, so nobody even has to notice if one of them fails. The dashboard is read-only —
+> that brake is the only button on it.
 >
-> One action stops everything. No action picks anything."
+> One button stops everything. No button chooses anything."
 
 ---
 
@@ -221,8 +223,8 @@ the video and the least necessary: it answers a question no judge asked.
 
 > **RAFAN:** "We also published every bug this thing had. Including my favourite.
 >
-> Our volatility signal read a hundred out of a hundred. For four days. Hottest possible
-> reading, every single cycle."
+> One of our numbers read a hundred out of a hundred. For four days straight. Highest reading
+> possible, every single time."
 
 **He taps the dial. Still maxed.**
 
@@ -233,9 +235,9 @@ the video and the least necessary: it answers a question no judge asked.
 
 **Overlay:** `iv_rank: 100.0` repeating down the log.
 
-> **RAFAN:** "Now the agent checks how deep its own history is before it's allowed to trust
-> its own number. That bug is written up and published — including the first fix we wrote and
-> threw away, because it would have stopped all trading."
+> **RAFAN:** "So now it checks how much history it actually has before it's allowed to trust
+> its own number. That one's written up and published — including the first fix we wrote and
+> then threw away, because it would have stopped the agent trading at all."
 
 ---
 
@@ -243,12 +245,12 @@ the video and the least necessary: it answers a question no judge asked.
 
 **Shot:** stops walking. Direct to camera.
 
-> **RAFAN:** "Five days of profit and loss is mostly noise — for us and for everyone else
-> here. Anyone claiming they've proven a strategy in a week is selling you something.
+> **RAFAN:** "Look — five days of profit and loss is mostly luck. For us, and for everyone
+> else here. Anyone telling you they've proven a strategy in a week is selling you something.
 >
-> What we *can* show you: every refusal traces to a named rule. No language model ever sized a
-> position or reached the broker unchecked. Three models scored against the same standard,
-> every cycle, in public. And every time we got it wrong, the log says so first."
+> What we *can* show you: every 'no' came from a rule with a name. No AI ever decided how much
+> money moved. Three of them marked against the same standard, every cycle, in the open. And
+> every time we got something wrong, the log said so before we did."
 
 **Beat. Masked man leans in with the bottle one last time.**
 
@@ -295,12 +297,11 @@ the video and the least necessary: it answers a question no judge asked.
   they're evidence. **Never blur that line**
 - **Crop the Alpaca API key panel** out of any dashboard capture
 - Say **three models**, not four
-- **Pace check, measured not guessed:** 873 spoken words. At 150 wpm that is 5.8 minutes of
-  talking, and roughly 50 seconds of sketch action sits on top — about 6:15 for the full
-  script, 5:00 with section 8 cut. Per-section counts, so you know where the slack is:
-  cold open 41w, cycle 105w, bottle 96w, menu 96w, Alpaca 141w, benchmark 118w, brake 93w,
-  thermometer 104w, close 79w. The menu exchange plays faster than its word count suggests -
-  ten short lines - so treat it as the one section that is already ahead of schedule
-- If you overrun on the day, cut in this order: section 8, then the "note what that guard is
-  *not*" beat, then the sizing line in section 5. Do not cut the defined-risk line in section
-  2 or the `mleg` line in section 5 — those are two of the three things the mentor named
+- **Per-section word counts**, so the slack is visible on the day: cold open 39 · cycle 114 ·
+  bottle 96 · menu 109 · Alpaca 129 · benchmark 122 · brake 94 · thermometer 109 · close 83.
+  The menu exchange plays faster than its count suggests — ten short lines — so it is already
+  ahead of schedule
+- **If you overrun**, cut in this order: section 8, then section 4's menu banter (keep the
+  "it can say no, never *instead*" line), then the "we don't ask a second AI" beat. Do **not**
+  cut the spread explanation in section 2 or the `mleg` line in section 5 — those are two of
+  the three things the mentor asked the video to cover
