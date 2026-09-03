@@ -4,33 +4,245 @@
   "title": "Design System: Brightline",
   "extensions": {
     "colorMeta": {
-      "ink": { "role": "primary", "displayName": "Ink", "canonical": "oklch(0.145 0 0)", "tonalRamp": ["#0d0d0d", "#1c1c1c", "#252525", "#3d3d3d", "#5c5c5c", "#8e8e8e", "#c4c4c4", "#f2f2f2"] },
-      "instrument": { "role": "primary", "displayName": "Instrument Black", "canonical": "#101010", "tonalRamp": ["#000000", "#0a0a0a", "#101010", "#1f1f1f", "#3a3a3a", "#6b6b6b", "#a8a8a8", "#e0e0e0"] },
-      "paper": { "role": "neutral", "displayName": "Paper", "canonical": "oklch(1 0 0)", "tonalRamp": ["#2b2b2b", "#4a4a4a", "#6e6e6e", "#949494", "#bcbcbc", "#dedede", "#f4f4f4", "#ffffff"] },
-      "muted-ink": { "role": "neutral", "displayName": "Muted Ink", "canonical": "oklch(0.556 0 0)", "tonalRamp": ["#151515", "#2e2e2e", "#4b4b4b", "#6c6c6c", "#8e8e8e", "#b3b3b3", "#d6d6d6", "#f0f0f0"] },
-      "rule": { "role": "neutral", "displayName": "Hairline", "canonical": "oklch(0.922 0 0)", "tonalRamp": ["#1a1a1a", "#333333", "#525252", "#757575", "#9c9c9c", "#c2c2c2", "#e4e4e4", "#fafafa"] },
-      "approved": { "role": "secondary", "displayName": "Approved Green", "canonical": "#0ca30c", "tonalRamp": ["#032f03", "#054905", "#086508", "#0a8208", "#0ca30c", "#3cc03c", "#7ad97a", "#c6f0c6"] },
-      "rejected": { "role": "secondary", "displayName": "Rejected Red", "canonical": "#d03b3b", "tonalRamp": ["#3a0c0c", "#571414", "#7c1e1e", "#a42c2c", "#d03b3b", "#e66767", "#f09a9a", "#f8d0d0"] },
-      "bull": { "role": "tertiary", "displayName": "Bull Blue", "canonical": "#2a78d6", "tonalRamp": ["#07203f", "#0c3363", "#134a8c", "#1c60b3", "#2a78d6", "#5c9be4", "#95bff0", "#d0e2fa"] },
-      "bear": { "role": "tertiary", "displayName": "Bear Orange", "canonical": "#eb6834", "tonalRamp": ["#3f1706", "#63240b", "#8c3612", "#b8481c", "#eb6834", "#f28f66", "#f8b799", "#fcdccb"] },
-      "condor": { "role": "tertiary", "displayName": "Condor Aqua", "canonical": "#1baf7a", "tonalRamp": ["#052f21", "#084833", "#0d6647", "#13875e", "#1baf7a", "#4fc79b", "#8adcbc", "#c7efdd"] },
-      "abstain": { "role": "tertiary", "displayName": "Abstain Gray", "canonical": "#898781", "tonalRamp": ["#1d1d1b", "#333331", "#4d4c49", "#6a6864", "#898781", "#a9a7a2", "#c9c8c4", "#e8e7e5"] }
+      "ink": {
+        "role": "primary",
+        "displayName": "Ink",
+        "canonical": "oklch(0.145 0 0)",
+        "tonalRamp": [
+          "#0d0d0d",
+          "#1c1c1c",
+          "#252525",
+          "#3d3d3d",
+          "#5c5c5c",
+          "#8e8e8e",
+          "#c4c4c4",
+          "#f2f2f2"
+        ]
+      },
+      "instrument": {
+        "role": "primary",
+        "displayName": "Espresso",
+        "canonical": "#1f1405",
+        "tonalRamp": [
+          "#0d0903",
+          "#141005",
+          "#1f1405",
+          "#352208",
+          "#59390d",
+          "#855614",
+          "#b1731b",
+          "#e4a64e"
+        ]
+      },
+      "paper": {
+        "role": "neutral",
+        "displayName": "Paper",
+        "canonical": "oklch(1 0 0)",
+        "tonalRamp": [
+          "#2b2b2b",
+          "#4a4a4a",
+          "#6e6e6e",
+          "#949494",
+          "#bcbcbc",
+          "#dedede",
+          "#f4f4f4",
+          "#ffffff"
+        ]
+      },
+      "muted-ink": {
+        "role": "neutral",
+        "displayName": "Muted Ink",
+        "canonical": "oklch(0.556 0 0)",
+        "tonalRamp": [
+          "#151515",
+          "#2e2e2e",
+          "#4b4b4b",
+          "#6c6c6c",
+          "#8e8e8e",
+          "#b3b3b3",
+          "#d6d6d6",
+          "#f0f0f0"
+        ]
+      },
+      "rule": {
+        "role": "neutral",
+        "displayName": "Hairline",
+        "canonical": "oklch(0.922 0 0)",
+        "tonalRamp": [
+          "#1a1a1a",
+          "#333333",
+          "#525252",
+          "#757575",
+          "#9c9c9c",
+          "#c2c2c2",
+          "#e4e4e4",
+          "#fafafa"
+        ]
+      },
+      "approved": {
+        "role": "secondary",
+        "displayName": "Approved Green",
+        "canonical": "#0ca30c",
+        "tonalRamp": [
+          "#032f03",
+          "#054905",
+          "#086508",
+          "#0a8208",
+          "#0ca30c",
+          "#3cc03c",
+          "#7ad97a",
+          "#c6f0c6"
+        ]
+      },
+      "rejected": {
+        "role": "secondary",
+        "displayName": "Rejected Red",
+        "canonical": "#d03b3b",
+        "tonalRamp": [
+          "#3a0c0c",
+          "#571414",
+          "#7c1e1e",
+          "#a42c2c",
+          "#d03b3b",
+          "#e66767",
+          "#f09a9a",
+          "#f8d0d0"
+        ]
+      },
+      "bull": {
+        "role": "tertiary",
+        "displayName": "Bull Blue",
+        "canonical": "#2a78d6",
+        "tonalRamp": [
+          "#07203f",
+          "#0c3363",
+          "#134a8c",
+          "#1c60b3",
+          "#2a78d6",
+          "#5c9be4",
+          "#95bff0",
+          "#d0e2fa"
+        ]
+      },
+      "bear": {
+        "role": "tertiary",
+        "displayName": "Bear Orange",
+        "canonical": "#eb6834",
+        "tonalRamp": [
+          "#3f1706",
+          "#63240b",
+          "#8c3612",
+          "#b8481c",
+          "#eb6834",
+          "#f28f66",
+          "#f8b799",
+          "#fcdccb"
+        ]
+      },
+      "condor": {
+        "role": "tertiary",
+        "displayName": "Condor Aqua",
+        "canonical": "#1baf7a",
+        "tonalRamp": [
+          "#052f21",
+          "#084833",
+          "#0d6647",
+          "#13875e",
+          "#1baf7a",
+          "#4fc79b",
+          "#8adcbc",
+          "#c7efdd"
+        ]
+      },
+      "abstain": {
+        "role": "tertiary",
+        "displayName": "Abstain Gray",
+        "canonical": "#898781",
+        "tonalRamp": [
+          "#1d1d1b",
+          "#333331",
+          "#4d4c49",
+          "#6a6864",
+          "#898781",
+          "#a9a7a2",
+          "#c9c8c4",
+          "#e8e7e5"
+        ]
+      },
+      "brand-olive": {
+        "role": "secondary",
+        "displayName": "Olive Wood",
+        "canonical": "#a4905b",
+        "tonalRamp": [
+          "#17140d",
+          "#211d12",
+          "#423924",
+          "#635636",
+          "#847348",
+          "#a4905b",
+          "#c9bc9c",
+          "#f6f4ef"
+        ]
+      },
+      "series-equity": {
+        "role": "secondary",
+        "displayName": "Sand",
+        "canonical": "#cab49b",
+        "tonalRamp": [
+          "#17120c",
+          "#211a12",
+          "#433423",
+          "#644e35",
+          "#866846",
+          "#a78258",
+          "#cab49b",
+          "#f6f3ee"
+        ]
+      }
     },
     "typographyMeta": {
-      "display": { "displayName": "Display", "purpose": "The page title. One per page." },
-      "headline": { "displayName": "Headline", "purpose": "Section headings, deliberately close to body size." },
-      "body": { "displayName": "Body", "purpose": "Human prose and model reasoning. Capped around 65ch." },
-      "numeric": { "displayName": "Numeric", "purpose": "Machine-produced figures. Tabular, always." },
-      "label": { "displayName": "Label", "purpose": "Field labels, tickers, verdicts, timestamps." }
+      "display": {
+        "displayName": "Display",
+        "purpose": "The page title. One per page."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Section headings, deliberately close to body size."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Human prose and model reasoning. Capped around 65ch."
+      },
+      "numeric": {
+        "displayName": "Numeric",
+        "purpose": "Machine-produced figures. Tabular, always."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Field labels, tickers, verdicts, timestamps."
+      }
     },
     "shadows": [],
     "motion": [
-      { "name": "state", "value": "150ms cubic-bezier(0.22, 1, 0.36, 1)", "purpose": "Hover and focus on interactive elements. Nothing on this page animates on entrance." }
+      {
+        "name": "state",
+        "value": "150ms cubic-bezier(0.22, 1, 0.36, 1)",
+        "purpose": "Hover and focus on interactive elements. Nothing on this page animates on entrance."
+      }
     ],
     "breakpoints": [
-      { "name": "sm", "value": "640px" },
-      { "name": "md", "value": "768px" },
-      { "name": "xl", "value": "1280px" }
+      {
+        "name": "sm",
+        "value": "640px"
+      },
+      {
+        "name": "md",
+        "value": "768px"
+      },
+      {
+        "name": "xl",
+        "value": "1280px"
+      }
     ]
   },
   "components": [
@@ -39,7 +251,7 @@
       "kind": "chip",
       "refersTo": "verdict-rejected",
       "description": "A risk-gate refusal. Word and glyph always travel with the colour.",
-      "html": "<span class=\"ds-verdict-rejected\">✕ rejected</span>",
+      "html": "<span class=\"ds-verdict-rejected\">\u00e2\u0153\u2022 rejected</span>",
       "css": ".ds-verdict-rejected { display: inline-flex; align-items: center; gap: 4px; border-radius: 9999px; padding: 2px 8px; font-family: 'Geist Mono', ui-monospace, monospace; font-size: 11px; font-weight: 500; color: #d03b3b; background: rgba(208, 59, 59, 0.08); }"
     },
     {
@@ -47,7 +259,7 @@
       "kind": "chip",
       "refersTo": "verdict-approved",
       "description": "A risk-gate approval.",
-      "html": "<span class=\"ds-verdict-approved\">✓ approved</span>",
+      "html": "<span class=\"ds-verdict-approved\">\u00e2\u0153\u201c approved</span>",
       "css": ".ds-verdict-approved { display: inline-flex; align-items: center; gap: 4px; border-radius: 9999px; padding: 2px 8px; font-family: 'Geist Mono', ui-monospace, monospace; font-size: 11px; font-weight: 500; color: #0ca30c; background: rgba(12, 163, 12, 0.08); }"
     },
     {
@@ -71,7 +283,7 @@
       "kind": "custom",
       "refersTo": "instrument-panel",
       "description": "The one dark surface on the page. Live account state only.",
-      "html": "<div class=\"ds-instrument\"><div class=\"ds-instrument-label\">ACCOUNT EQUITY</div><div class=\"ds-instrument-value\">$99,792.58</div><div class=\"ds-instrument-meta\">latest · Sep 2, 03:15 PM ET</div></div>",
+      "html": "<div class=\"ds-instrument\"><div class=\"ds-instrument-label\">ACCOUNT EQUITY</div><div class=\"ds-instrument-value\">$99,792.58</div><div class=\"ds-instrument-meta\">latest \u00c2\u00b7 Sep 2, 03:15 PM ET</div></div>",
       "css": ".ds-instrument { background: #101010; color: #ffffff; border-radius: 0.625rem; padding: 32px; } .ds-instrument-label { font-family: 'Geist Mono', ui-monospace, monospace; font-size: 11px; text-transform: uppercase; letter-spacing: 0.15em; color: #8a8a8a; } .ds-instrument-value { font-family: 'Geist Mono', ui-monospace, monospace; font-size: 2rem; font-weight: 600; font-variant-numeric: tabular-nums; margin-top: 4px; } .ds-instrument-meta { font-family: 'Geist Mono', ui-monospace, monospace; font-size: 11px; color: #8a8a8a; margin-top: 4px; }"
     }
   ],
@@ -86,13 +298,46 @@
       "Flat by default: hairlines and tonal tint carry depth, not shadow"
     ],
     "rules": [
-      { "name": "The Single Instrument Rule", "body": "Exactly one surface on the page is dark: the account-equity panel. No other card, section, or container may invert.", "section": "colors" },
-      { "name": "The Status-Is-Not-Category Rule", "body": "Green and red mean approved and rejected. They are forbidden as series colors, as sentiment, and as emphasis.", "section": "colors" },
-      { "name": "The Meaning-Only Rule", "body": "Saturation appears only where it carries information. A colored element that would look the same in gray without losing meaning must be gray.", "section": "colors" },
-      { "name": "The Two Voices Rule", "body": "If a machine produced it, it is monospaced. If a person wrote it, it is not. No third category, no exceptions for aesthetics.", "section": "typography" },
-      { "name": "The Full Reasoning Rule", "body": "Model justifications are never truncated, clamped, ellipsised, or hidden behind a show-more. The length and the disagreement are the content.", "section": "typography" },
-      { "name": "The Hairline Rule", "body": "Borders are 1px. A 2px border, or a colored border used as an accent stripe on one edge, is prohibited outright.", "section": "elevation" },
-      { "name": "The No-Ghost-Card Rule", "body": "A 1px border and a soft wide shadow on the same element is banned. A surface gets a hairline or a tonal tint, never both, never a shadow.", "section": "elevation" }
+      {
+        "name": "The Single Instrument Rule",
+        "body": "Exactly one surface on the page is dark: the account-equity panel. No other card, section, or container may invert.",
+        "section": "colors"
+      },
+      {
+        "name": "The Status-Is-Not-Category Rule",
+        "body": "Green and red mean approved and rejected. They are forbidden as series colors, as sentiment, and as emphasis.",
+        "section": "colors"
+      },
+      {
+        "name": "The Meaning-Only Rule",
+        "body": "Saturation appears only where it carries information. A colored element that would look the same in gray without losing meaning must be gray.",
+        "section": "colors"
+      },
+      {
+        "name": "The Two Voices Rule",
+        "body": "If a machine produced it, it is monospaced. If a person wrote it, it is not. No third category, no exceptions for aesthetics.",
+        "section": "typography"
+      },
+      {
+        "name": "The Full Reasoning Rule",
+        "body": "Model justifications are never truncated, clamped, ellipsised, or hidden behind a show-more. The length and the disagreement are the content.",
+        "section": "typography"
+      },
+      {
+        "name": "The Hairline Rule",
+        "body": "Borders are 1px. A 2px border, or a colored border used as an accent stripe on one edge, is prohibited outright.",
+        "section": "elevation"
+      },
+      {
+        "name": "The No-Ghost-Card Rule",
+        "body": "A 1px border and a soft wide shadow on the same element is banned. A surface gets a hairline or a tonal tint, never both, never a shadow.",
+        "section": "elevation"
+      },
+      {
+        "name": "The Amber Prohibition",
+        "body": "The brand's amber mid-tones are prohibited: they collide in hue with bear_put_spread's #eb6834, and a decorative orange beside a meaningful one destroys the categorical read.",
+        "section": "colors"
+      }
     ],
     "dos": [
       "Do monospace every machine-produced value and set every human sentence in Geist.",
@@ -114,7 +359,8 @@
       "Don't reach for the trading-bot register: neon-green candles, glowing gauges, leaderboard energy, AI-POWERED badges.",
       "Don't reach for fintech navy-and-gold, or trust-by-decoration of any kind.",
       "Don't use gradient text, glassmorphism, hero metrics, or an uppercase tracked eyebrow above every section.",
-      "Don't style the agent as clever. It is constrained, and the interface should read that way."
+      "Don't style the agent as clever. It is constrained, and the interface should read that way.",
+      "Don't use the brand's amber mid-tones anywhere. Orange means bear put spread."
     ]
   }
 }

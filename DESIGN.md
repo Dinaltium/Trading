@@ -4,7 +4,12 @@ description: A read-only record of an autonomous options agent — every cycle, 
 colors:
   ink: "#252525"
   paper: "#ffffff"
-  instrument: "#101010"
+  instrument: "#1f1405"
+  brand-bark: "#352208"
+  brand-olive: "#a4905b"
+  brand-olive-deep: "#635636"
+  brand-fawn: "#e2bc83"
+  series-equity: "#cab49b"
   muted-ink: "#8e8e8e"
   rule: "#e4e4e4"
   approved: "#0ca30c"
@@ -125,8 +130,15 @@ entirely for meaning: two status colors and three strategy identities.
 ### Primary
 - **Ink** (`#252525`): All body copy, headings, and any value that is simply a fact. The
   default. If a color is not carrying meaning, it is this one.
-- **Instrument** (`#101010`): The equity panel's ground, and nothing else on the page. See
-  *The Single Instrument Rule*.
+- **Espresso** (`#1f1405`): The equity panel's ground, and nothing else on the page. Taken
+  from the dark end of the coffee ramp rather than a neutral black, so the one inverted
+  surface carries the brand instead of being merely dark. See *The Single Instrument Rule*.
+- **Olive Wood** (`#a4905b`, `#635636` on light ground at 7.1:1): The brand's speaking voice.
+  Restricted to elements with no informational job — the kicker, section markers, the rule
+  under the wordmark, instrument axis labels. Never a data colour.
+- **Sand** (`#cab49b`): The equity series. Deliberately not blue: the series used to be
+  `#2a78d6`, byte-identical to `bull_call_spread`, so the equity line was drawn in a hue
+  that means "bull call spread" everywhere else on the page.
 
 ### Secondary
 - **Approved Green** (`#0ca30c`): A risk-gate approval, and the count of approvals. Never
@@ -145,9 +157,11 @@ cycled. Each appears as a 8px dot preceding the strategy name.
   not a fourth strategy, and giving it a hue would imply parity it doesn't have.
 
 ### Neutral
-- **Paper** (`#ffffff`): Page and card ground.
-- **Muted Ink** (`#8e8e8e`): Labels, timestamps, secondary prose. Measured at 4.6:1 on paper
-  — at the floor, not below it. Do not lighten.
+- **Paper** (`oklch(0.995 0.003 85)`): Page and card ground. Carries ~0.006 chroma toward
+  the brand hue — enough not to read as clinical grey beside the espresso panel, far short
+  of the warm near-white cream band that reads as a generated default.
+- **Muted Ink** (`oklch(0.505 0.014 85)`): Labels, timestamps, secondary prose. Measured at
+  5.79:1 on paper. Do not lighten past 4.5:1.
 - **Rule** (`#e4e4e4`): Hairline borders and dividers. 1px only.
 
 ### Named Rules
@@ -155,14 +169,19 @@ cycled. Each appears as a 8px dot preceding the strategy name.
 **The Single Instrument Rule.** Exactly one surface on the page is dark: the account-equity
 panel. It is the instrument face — the live state of the thing being watched. No other card,
 section, or container may invert. The inversion is what makes the eye land there first, and
-a second dark surface destroys it.
+a second dark surface destroys it. It is dark in *every* colour scheme, deliberately: it
+previously inverted only when the viewer's OS asked for dark, so on a light-mode phone the
+page had no instrument at all and its focal point disappeared.
 
 **The Status-Is-Not-Category Rule.** Green and red mean *approved* and *rejected*. They are
 forbidden as series colors, as sentiment (profit/loss), and as emphasis. A green number on
 this page always means a gate let something through, never that a trade made money.
 
-**The Meaning-Only Rule.** Saturation appears only where it carries information. A colored
-element that would look the same in gray without losing meaning must be gray.
+**The Meaning-Only Rule.** Saturation appears only where it carries information, with one
+named exception: the olive brand voice, which is confined to elements that carry none. The
+brand's amber mid-tones (`#cf8f30`, `#de8f21`) are **prohibited outright** — they collide in
+hue with `bear_put_spread`'s `#eb6834`, and a decorative orange beside a meaningful one
+destroys the categorical read. Orange on this page always means bear put spread.
 
 ## 3. Typography
 
@@ -238,9 +257,9 @@ and never a shadow.
   mono. The dot carries identity; the text carries the name. Neither alone.
 
 ### Instrument Panel (signature)
-- **Ground:** `#101010`, `0.625rem` radius, generous internal padding.
-- **Contents:** the uppercase mono label, the equity figure at display scale in mono, a
-  timestamp, the delta, and the sparkline in a single accent blue.
+- **Ground:** `#1f1405` with a `#352208` hairline, `0.625rem` radius, generous padding.
+- **Contents:** the uppercase mono label in olive, the equity figure at display scale in
+  mono, a timestamp, the delta, and the sparkline in sand.
 - **Rule:** one per page. See *The Single Instrument Rule*.
 
 ### Cycle Cards
@@ -276,7 +295,9 @@ and never a shadow.
   throughout, and every number on the page is harder to place because of it. *(open — fix
   before submission)*
 - **Don't** use green for profit or red for loss. Those are gate verdicts here.
-- **Don't** introduce a second dark surface, a shadow, or a border above 1px.
+- **Don't** introduce a second dark surface, a shadow, or a border above 1px — the 2px rule
+  under the wordmark is the single exception, and it is brand, not structure.
+- **Don't** use the brand's amber mid-tones anywhere. Orange means bear put spread.
 - **Don't** pair a 1px border with a wide soft shadow on the same element.
 - **Don't** exceed `0.625rem` radius on a card. Pills are for badges only.
 - **Don't** reach for the trading-bot register: neon-green candles, glowing gauges,

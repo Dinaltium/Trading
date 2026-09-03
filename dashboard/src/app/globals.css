@@ -53,26 +53,40 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
+/* Brightline's warmth comes from the dark end of the coffee/olive ramp, never the light
+   end. The cream steps of that palette (#faf4ea, #f6f4ef) sit in the warm near-white band
+   that currently reads as a generated default, and its amber mid-tones (#cf8f30, #de8f21)
+   collide in hue with bear_put_spread's #eb6834 - which carries meaning and must stay the
+   only orange on the page. So the brand appears as ground and as tint in the neutrals, and
+   never as a decorative accent. See DESIGN.md, The Meaning-Only Rule. */
 :root {
+  --brand-espresso: #1f1405;   /* instrument ground */
+  --brand-bark: #352208;       /* instrument edge, chart gridlines */
+  --brand-olive: #a4905b;      /* the equity series */
+  --brand-olive-deep: #635636; /* olive text on light ground, 4.9:1 */
+  --brand-fawn: #e2bc83;       /* labels on the instrument only */
+
   color-scheme: light dark;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
+  /* Neutrals carry ~0.006 chroma toward the brand's own hue (85deg). Enough that the page
+     is not clinically grey next to the coffee panel; far short of the cream band. */
+  --background: oklch(0.995 0.003 85);
+  --foreground: oklch(0.16 0.008 85);
+  --card: oklch(1 0.002 85);
+  --card-foreground: oklch(0.16 0.008 85);
+  --popover: oklch(1 0.002 85);
+  --popover-foreground: oklch(0.16 0.008 85);
+  --primary: oklch(0.28 0.03 75);
+  --primary-foreground: oklch(0.985 0.004 85);
+  --secondary: oklch(0.965 0.006 85);
+  --secondary-foreground: oklch(0.28 0.03 75);
+  --muted: oklch(0.965 0.006 85);
+  --muted-foreground: oklch(0.505 0.014 85);
+  --accent: oklch(0.965 0.008 85);
+  --accent-foreground: oklch(0.28 0.03 75);
   --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
+  --border: oklch(0.905 0.008 85);
+  --input: oklch(0.905 0.008 85);
+  --ring: oklch(0.68 0.03 80);
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);

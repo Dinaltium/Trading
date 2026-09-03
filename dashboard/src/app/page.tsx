@@ -31,11 +31,11 @@ export default async function DashboardPage() {
   // the chance to scroll, because nothing was ever narrower than the table.
   return (
     <div className="mx-auto w-full min-w-0 max-w-7xl space-y-8 p-4 sm:p-8">
-      <header className="space-y-2 border-b pb-6">
+      <header className="space-y-2 border-b-2 border-b-[var(--brand-olive)]/35 pb-6">
         {/* The kicker is 40 characters of letter-spaced mono. At 0.25em it needs ~430px and
             wrapped mid-phrase on every phone; the tracking relaxes until there is room. */}
         <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-          <div className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground sm:text-[11px] sm:tracking-[0.25em]">
+          <div className="font-mono text-[10px] uppercase tracking-[0.12em] text-[var(--brand-olive-deep)] sm:text-[11px] sm:tracking-[0.25em]">
             Alpaca AI Trading Agents · Options Alpha
           </div>
           <LiveRefresh />
@@ -64,7 +64,10 @@ export default async function DashboardPage() {
 
       <section className="space-y-4">
         <div>
-          <h2 className="text-base font-semibold tracking-tight">Live vs. shadow</h2>
+          <h2 className="flex items-center gap-2.5 text-base font-semibold tracking-tight">
+            <span className="inline-block h-3.5 w-1 rounded-full bg-[var(--brand-olive)]" />
+            Live vs. shadow
+          </h2>
           <p className="text-sm text-muted-foreground">Most recent cycles, full reasoning, nothing truncated.</p>
         </div>
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -96,7 +99,10 @@ export default async function DashboardPage() {
 
       <section className="space-y-4">
         <div>
-          <h2 className="text-base font-semibold tracking-tight">All trade cycles</h2>
+          <h2 className="flex items-center gap-2.5 text-base font-semibold tracking-tight">
+            <span className="inline-block h-3.5 w-1 rounded-full bg-[var(--brand-olive)]" />
+            All trade cycles
+          </h2>
           <p className="text-sm text-muted-foreground">Full history, most recent first.</p>
         </div>
         <CycleTable records={records} />

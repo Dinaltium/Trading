@@ -36,43 +36,29 @@ function buildSeries(records: CycleRecord[]): Point[] {
 }
 
 const VIZ_TOKENS = `
+  /* The instrument face. Dark in every colour scheme, deliberately: this used to invert only
+     when the viewer's OS asked for dark, so on a light-mode phone the page had no dark
+     surface at all and its one focal point disappeared. One instrument, always, is the rule
+     the rest of the page is composed around (DESIGN.md, The Single Instrument Rule).
+
+     The series is olive-wood rather than the blue it used to be. That blue was #2a78d6 -
+     byte-identical to bull_call_spread's categorical colour - so the equity line was drawn
+     in a hue that means "bull call spread" everywhere else on the page. */
   .viz-root {
-    --surface-1: #fcfcfb;
-    --text-primary: #0b0b0b;
-    --text-secondary: #52514e;
-    --muted: #898781;
-    --gridline: #e1e0d9;
-    --series-equity: #2a78d6;
-    --good: #0ca30c;
-    --critical: #d03b3b;
-  }
-  @media (prefers-color-scheme: dark) {
-    :root:not([data-theme="light"]) .viz-root {
-      --surface-1: #1a1a19;
-      --text-primary: #ffffff;
-      --text-secondary: #c3c2b7;
-      --muted: #898781;
-      --gridline: #2c2c2a;
-      --series-equity: #3987e5;
-      --good: #0ca30c;
-      --critical: #e66767;
-    }
-  }
-  :root[data-theme="dark"] .viz-root {
-    --surface-1: #1a1a19;
+    --surface-1: #1f1405;
     --text-primary: #ffffff;
-    --text-secondary: #c3c2b7;
-    --muted: #898781;
-    --gridline: #2c2c2a;
-    --series-equity: #3987e5;
-    --good: #0ca30c;
+    --text-secondary: #e2bc83;
+    --muted: #a4905b;
+    --gridline: #352208;
+    --series-equity: #cab49b;
+    --good: #4cc94c;
     --critical: #e66767;
   }
 `;
 
 function EmptyState({ message }: { message: string }) {
   return (
-    <div className="viz-root rounded-2xl border p-4 sm:p-6" style={{ background: "var(--surface-1)" }}>
+    <div className="viz-root rounded-2xl border border-[#352208] p-4 sm:p-6" style={{ background: "var(--surface-1)" }}>
       <style>{VIZ_TOKENS}</style>
       <div className="flex h-56 items-center justify-center text-center text-sm text-[var(--text-secondary)]">
         {message}
@@ -149,7 +135,7 @@ export function EquityChart({ records }: { records: CycleRecord[] }) {
   ];
 
   return (
-    <div className="viz-root rounded-2xl border p-4 sm:p-6" style={{ background: "var(--surface-1)" }}>
+    <div className="viz-root rounded-2xl border border-[#352208] p-4 sm:p-6" style={{ background: "var(--surface-1)" }}>
       <style>{VIZ_TOKENS}</style>
 
       <div className="mb-4 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-2">
