@@ -1,7 +1,13 @@
 # Brightline — video script
 
-**Length: 5:00.** Walk-and-talk to camera, quick cuts, screen-grabs beside the presenter,
-physical sketches acting out each mechanism.
+**Length: 5:00 in the standard cut.** Walk-and-talk to camera, quick cuts, screen-grabs beside
+the presenter, physical sketches acting out each mechanism.
+
+Timed at 150 words per minute plus sketch action, the full script below runs about **6:15**.
+Section 8 (the thermometer) is marked OPTIONAL and cutting it lands the standard cut at
+**5:00** — it is the only section that is not load-bearing for the three things Alpaca's
+mentor asked the video to cover. Alpaca said "no hard requirements... about 5 mins", so the
+6:15 version is defensible if it plays better; do not go past that.
 
 **Why this structure.** Alpaca's mentor said the video should "walk through the agent: the
 options path, how it talks to Alpaca, and the risk gates." So the spine is **one cycle, start
@@ -30,7 +36,7 @@ panel on the dashboard's right-hand side.
 
 ---
 
-## [0:00 – 0:18] · COLD OPEN
+## 1 · [0:00 – 0:18] · COLD OPEN
 
 **Shot:** mid-walk, already talking. No title card yet.
 
@@ -48,24 +54,23 @@ then a red stamp: **UNVERIFIED**
 
 ---
 
-## [0:18 – 1:00] · ONE CYCLE, END TO END *(the options path)*
+## 2 · [0:18 – 1:05] · ONE CYCLE, END TO END *(the options path)*
 
 **Shot:** walking. Overlay: a clean five-step strip that stays on screen, lighting up as he
 names each step — **SIGNALS → MODEL → RULEBOOK → RISK GATE → BROKER**
 
-> **RAFAN:** "Every fifteen minutes the agent runs one cycle, on four index ETFs — SPY, QQQ,
-> IWM, DIA.
+> **RAFAN:** "Every fifteen minutes, one cycle, on four index ETFs.
 >
-> First it builds the signals itself. A LightGBM classifier, retrained from scratch every
-> cycle on nine hundred days of bars, gives a probability that the underlying rises. Separately
-> we compute implied-volatility rank from our own recorded history.
+> It builds its own signals first — a LightGBM classifier, retrained every cycle, gives the
+> probability the underlying rises. Alongside it, implied-volatility rank from our own
+> recorded history.
 >
-> Those two numbers pick the structure. Bullish enough — a bull call spread. Bearish enough —
-> a bear put. Neutral *and* volatility is expensive — an iron condor. Nothing clean — cash.
+> Those two numbers pick the structure. Bullish, bearish, neutral-with-expensive-volatility,
+> or nothing.
 >
-> Every one of those is a **defined-risk spread**. Two legs or four, bought and sold together.
-> The maximum loss is known before the order exists. That's the entire options universe this
-> agent is allowed to touch — no naked options, no single legs, no assignment risk."
+> All of them are **defined-risk spreads** — legs bought and sold together, maximum loss known
+> before the order exists. No naked options, no single legs. That's the whole universe it can
+> touch."
 
 **Overlay:** the four strategy names, with `MAX LOSS: KNOWN` under each.
 
@@ -74,7 +79,7 @@ names each step — **SIGNALS → MODEL → RULEBOOK → RISK GATE → BROKER**
 
 ---
 
-## [1:00 – 1:40] · SKETCH 1 — THE POISONED BOTTLE *(the guards)*
+## 3 · [1:05 – 1:47] · SKETCH 1 — THE POISONED BOTTLE *(the guards)*
 
 **Shot:** Masked man steps in from the side, matching pace, holds out a bottle.
 
@@ -87,11 +92,11 @@ names each step — **SIGNALS → MODEL → RULEBOOK → RISK GATE → BROKER**
 
 **He drinks. Beat. Collapses out of frame. Hard cut — he pops back up, fine.**
 
-> **RAFAN:** "That's what happens when a model gets to report its own inputs.
+> **RAFAN:** "That's what happens when a model reports its own inputs.
 >
-> So before any answer is allowed to count, four guards run. The important one: every number
-> the model quotes in its reasoning is checked against the numbers we actually handed it.
-> Quote a figure you were never given, and the trade dies before it exists."
+> Four guards run before an answer counts. The important one: every number the model quotes is
+> checked against the numbers we handed it. Quote a figure you were never given, the trade dies
+> before it exists."
 
 **Overlay:** `guards.py`, one line highlighted.
 
@@ -102,7 +107,7 @@ names each step — **SIGNALS → MODEL → RULEBOOK → RISK GATE → BROKER**
 
 ---
 
-## [1:40 – 2:20] · SKETCH 2 — THE ONE-ITEM MENU *(the rulebook)*
+## 4 · [1:47 – 2:30] · SKETCH 2 — THE ONE-ITEM MENU *(the rulebook)*
 
 **Shot:** Rafan at a table. Prateek as waiter hands over a menu.
 
@@ -133,47 +138,44 @@ verdict `off-rulebook`.
 
 ---
 
-## [2:20 – 2:55] · HOW IT TALKS TO ALPACA
+## 5 · [2:30 – 3:20] · HOW IT TALKS TO ALPACA
 
 **Shot:** walking. Overlay: terminal, real commands.
 
-> **RAFAN:** "Now the part that actually reaches the market.
+> **RAFAN:** "Now the part that reaches the market.
 >
-> We don't use an SDK. Every order goes through Alpaca's own CLI, shelled out to as a
-> subprocess. Two reasons. It's built for long-running agent sessions and cron jobs — which is
-> exactly what this is. And it means the exact command that hit the broker is a string we can
-> print into the audit log, verbatim."
+> No SDK. Every order goes through Alpaca's own CLI as a subprocess — it's built for exactly
+> this, long-running agent sessions and cron jobs, and it means the command that hit the
+> broker is a string we can print into the log verbatim."
 
 **Overlay:** the real logged command —
 `alpaca order submit --order-class mleg --qty 14 --type limit --limit-price 1.42 --legs [...]`
 
-> **RAFAN:** "That's a multi-leg order. `mleg`. All legs fill together or none do — you can
-> never end up with half a spread and unlimited risk on the other side.
+> **RAFAN:** "`mleg` — multi-leg. All legs fill together or none do. You can never end up
+> holding half a spread with unlimited risk on the other side.
 >
-> And before any order is built, one more thing runs: `alpaca doctor`. Out of process. It
-> resolves the endpoint and confirms it's paper. If that check fails, the job dies. The agent
-> is not capable of discovering it's pointed at a live account after the fact."
+> And before any order is built, `alpaca doctor` runs out of process and confirms the endpoint
+> is paper. Fails, the job dies. This agent cannot discover it was pointed at a live account
+> after the fact."
 
 **Overlay:** `alpaca doctor` output, `paper-api.alpaca.markets` highlighted.
 
-> **RAFAN:** "Sizing is quarter-Kelly, off the classifier's calibrated probability, capped at
-> two percent of equity per trade. The model is never asked how confident it is. It doesn't
-> size anything."
+> **RAFAN:** "Sizing is quarter-Kelly off the classifier's probability, capped at two percent
+> of equity. The model is never asked how confident it is. It doesn't size anything."
 
 ---
 
-## [2:55 – 3:35] · THE BENCHMARK *(the differentiator — let the real thing carry it)*
+## 6 · [3:20 – 4:05] · THE BENCHMARK *(the differentiator — let the real thing carry it)*
 
 **Shot:** walking, faster energy. Then cut to the live dashboard.
 
 > **RAFAN:** "Here's the part I haven't seen anyone else do.
 >
-> Every cycle, *three different AI models* get the exact same signal vector. One of them can
-> trade. The other two are recorded and scored, and never touch the account.
+> Every cycle, *three* AI models get the same signal vector. One can trade. The other two are
+> recorded and scored, and never touch the account.
 >
-> Because the rulebook is a pure function of those same signals, every answer can be marked
-> right or wrong **immediately** — you don't wait weeks for P&L to tell you. Compliance is
-> measurable today. Profit isn't."
+> Because the rulebook is a pure function of those same signals, every answer is markable right
+> or wrong **immediately**. Compliance is measurable today. Profit isn't."
 
 **Overlay:** the live activity feed, scrolling — one line visible showing the live model
 choosing `cash` while both shadows chose `bear put spread`.
@@ -187,7 +189,7 @@ choosing `cash` while both shadows chose `bear put spread`.
 
 ---
 
-## [3:35 – 4:05] · SKETCH 3 — BRAKE, NO STEERING WHEEL *(autonomy)*
+## 7 · [4:05 – 4:40] · SKETCH 3 — BRAKE, NO STEERING WHEEL *(autonomy)*
 
 **Shot:** Prateek walking beside him holding a brake lever with no wires.
 
@@ -210,7 +212,10 @@ choosing `cash` while both shadows chose `bear put spread`.
 
 ---
 
-## [4:05 – 4:35] · SKETCH 4 — THE THERMOMETER *(what we got wrong)*
+## 8 · OPTIONAL — SKETCH 4: THE THERMOMETER *(what we got wrong)*
+
+**Cut this to hit 5:00.** Keep it only if the standard cut runs short. It is the best story in
+the video and the least necessary: it answers a question no judge asked.
 
 **Shot:** Rafan holds a big cardboard dial pinned at maximum.
 
@@ -221,10 +226,10 @@ choosing `cash` while both shadows chose `bear put spread`.
 
 **He taps the dial. Still maxed.**
 
-> **RAFAN:** "Because we'd only been measuring since Thursday afternoon. If you've taken the
-> temperature *once*, of course today's the hottest day on record.
+> **RAFAN:** "Because we'd only been measuring since Thursday. Take the temperature *once*
+> and of course today's the hottest day on record.
 >
-> Arithmetically perfect. Completely meaningless. Not one test failed, for four days."
+> Arithmetically perfect, completely meaningless, and not one test failed."
 
 **Overlay:** `iv_rank: 100.0` repeating down the log.
 
@@ -234,7 +239,7 @@ choosing `cash` while both shadows chose `bear put spread`.
 
 ---
 
-## [4:35 – 5:00] · CLOSE
+## 9 · [4:40 – 5:00] · CLOSE  *(4:40 becomes 5:22 if section 8 is kept)*
 
 **Shot:** stops walking. Direct to camera.
 
@@ -290,5 +295,12 @@ choosing `cash` while both shadows chose `bear put spread`.
   they're evidence. **Never blur that line**
 - **Crop the Alpaca API key panel** out of any dashboard capture
 - Say **three models**, not four
-- Pace check: this is ~700 spoken words. If a section runs long, the thermometer sketch is the
-  one to trim — it's the only one that isn't load-bearing for the mentor's three questions
+- **Pace check, measured not guessed:** 873 spoken words. At 150 wpm that is 5.8 minutes of
+  talking, and roughly 50 seconds of sketch action sits on top — about 6:15 for the full
+  script, 5:00 with section 8 cut. Per-section counts, so you know where the slack is:
+  cold open 41w, cycle 105w, bottle 96w, menu 96w, Alpaca 141w, benchmark 118w, brake 93w,
+  thermometer 104w, close 79w. The menu exchange plays faster than its word count suggests -
+  ten short lines - so treat it as the one section that is already ahead of schedule
+- If you overrun on the day, cut in this order: section 8, then the "note what that guard is
+  *not*" beat, then the sizing line in section 5. Do not cut the defined-risk line in section
+  2 or the `mleg` line in section 5 — those are two of the three things the mentor named
