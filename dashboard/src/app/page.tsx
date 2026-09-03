@@ -7,6 +7,7 @@ import { Separator } from "@/components/ui/separator";
 import { LiveRefresh } from "@/components/live-refresh";
 import { SessionSummary } from "@/components/session-summary";
 import { ModelBriefing } from "@/components/model-briefing";
+import { ActivityFeed } from "@/components/activity-feed";
 
 // Read-only dashboard, no forms/buttons that touch the account. Data source is
 // GitHub (see lib/audit.ts), re-fetched with no caching so this always reflects
@@ -67,6 +68,8 @@ export default async function DashboardPage() {
         <StatTile label="Risk gate approved" value={approvedCount} tone="good" />
         <StatTile label="Risk gate rejected" value={rejectedCount} tone="critical" />
       </div>
+
+      <ActivityFeed records={records} />
 
       <section className="space-y-4">
         <div>
