@@ -99,6 +99,20 @@ alpaca order submit --order-class mleg --qty 14 --type limit --limit-price 1.42 
   spread and unlimited risk on the other side.
 - Resting limits are cancelled after 20 minutes and the decision re-made from current signals.
 
+### CLI and SDK — which does what, and why
+
+Alpaca's FAQ asks that any SDK use be explained. Both are used here, and the split is
+deliberate:
+
+| | Used for | Why |
+|---|---|---|
+| **Alpaca CLI** | **Every order.** Submit, cancel, position and order reads, and the paper-endpoint check | Orders are the part that moves money. The CLI is built for long-running agent sessions and cron jobs, and it makes the exact submitted command a string in the audit log — an SDK call is not quotable that way |
+| **`alpaca-py`** (official SDK) | Market data only: option chains, stock bars, the market clock, and account equity reads | Historical bars and option-chain snapshots are a data problem, not an execution one. The classifier needs 900 days of bars per cycle, which is a data-client job |
+
+The rule the codebase holds to: **nothing that changes the account goes through the SDK.**
+`src/alpaca_cli.py` is the only module that submits or cancels anything, and it shells out to
+the CLI every time.
+
 ## The integrity layer
 
 Four deterministic guards ([`src/guards.py`](src/guards.py)), structured on
