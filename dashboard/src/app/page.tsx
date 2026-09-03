@@ -6,6 +6,7 @@ import { StatTile } from "@/components/stat-tile";
 import { Separator } from "@/components/ui/separator";
 import { LiveRefresh } from "@/components/live-refresh";
 import { SessionSummary } from "@/components/session-summary";
+import { ModelBriefing } from "@/components/model-briefing";
 
 // Read-only dashboard, no forms/buttons that touch the account. Data source is
 // GitHub (see lib/audit.ts), re-fetched with no caching so this always reflects
@@ -55,6 +56,8 @@ export default async function DashboardPage() {
       <SessionSummary records={records} />
 
       <EquityChart records={records} />
+
+      <ModelBriefing />
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">
         {/* Three tiles into two columns leaves a hole; the count spans the row instead. */}
