@@ -1,14 +1,21 @@
-# Video script — walking explainer with sketches
+# Brightline — video script
 
-Format: walk-and-talk to camera, quick cuts, thumbnails and screen-grabs popping in beside
-the presenter, physical sketches acting out each mechanism. Roughly **3:00**.
+**Length: 5:00.** Walk-and-talk to camera, quick cuts, screen-grabs beside the presenter,
+physical sketches acting out each mechanism.
 
-**The rule that makes this work:** every sketch dramatizes something that genuinely exists in
-the repo. The bottle is Guard 2. The menu is the rulebook. The brake is `/admin`. If a judge
-opens the code after watching, each gag has a real line behind it. Metaphor is fine; a sketch
-for a feature you don't have is not.
+**Why this structure.** Alpaca's mentor said the video should "walk through the agent: the
+options path, how it talks to Alpaca, and the risk gates." So the spine is **one cycle, start
+to finish**, and every sketch hangs off the point in that cycle where it belongs. A judge who
+has never seen the repo should be able to follow the path of a single decision from signal to
+broker, and know at each step what could have stopped it.
 
-**Never on screen:** invented P&L, fake trades, mocked dashboards, or the API key panel.
+**The rule that makes this work:** every sketch dramatises something that genuinely exists in
+the repo. The bottle is Guard 2. The menu is the rulebook. The brake is the kill switch. If a
+judge opens the code after watching, each gag has a real line behind it. Metaphor is fine; a
+sketch for a feature you don't have is not.
+
+**Never on screen:** invented P&L, fake trades, mocked dashboards, or the Alpaca API key
+panel on the dashboard's right-hand side.
 
 ---
 
@@ -18,191 +25,233 @@ for a feature you don't have is not.
 |---|---|
 | **Rafan** | on camera, walking — plays "the agent" in sketches |
 | **Prateek** | the masked man, the waiter, the hand on the brake |
-| Props | water bottle, a one-item menu, a thermometer or a big cardboard dial, a red button or a bike brake lever |
-| Wardrobe | masked man in a hoodie + mask. Same hoodie every time he appears — he becomes a running character |
+| Props | water bottle, a one-item menu, a big cardboard dial, a bike brake lever |
+| Wardrobe | masked man in a hoodie + mask. Same hoodie every time — he becomes a running character |
 
 ---
 
-## [0:00 – 0:12] · COLD OPEN — no intro, straight in
+## [0:00 – 0:18] · COLD OPEN
 
 **Shot:** mid-walk, already talking. No title card yet.
 
-> **RAFAN:** "If you ask an AI for a trade right now, it'll give you one. Confident. Cites
-> the Greeks. Sounds *brilliant.*
+> **RAFAN:** "Ask any AI for a trade right now and it'll give you one. Confident. Cites the
+> Greeks. Sounds brilliant.
 >
-> And absolutely nothing checked whether any of it was true."
+> And nothing checked whether a single word of it was true."
 
-**Overlay:** a chat bubble mock — *"Strong bullish setup, IV rank 82, recommend call spread"* —
-then a red stamp across it: **UNVERIFIED**
+**Overlay:** a chat bubble — *"Strong bullish setup, IV rank 82, recommend call spread"* —
+then a red stamp: **UNVERIFIED**
 
-*Title card slams in over the walk:* **{{NAME}}**
+> **RAFAN:** "We built the part that checks. It's called Brightline."
+
+*Title card:* **BRIGHTLINE** — *a bright-line rule admits no judgment. Neither does ours.*
 
 ---
 
-## [0:12 – 0:50] · SKETCH 1 — THE POISONED BOTTLE *(guards)*
+## [0:18 – 1:00] · ONE CYCLE, END TO END *(the options path)*
 
-**Shot:** Rafan walking. Masked man steps in from the side, matching pace, holds out a bottle.
+**Shot:** walking. Overlay: a clean five-step strip that stays on screen, lighting up as he
+names each step — **SIGNALS → MODEL → RULEBOOK → RISK GATE → BROKER**
 
-> **RAFAN:** "Everyone's building autonomous trading agents. Almost nobody's building the
-> part that assumes the agent is being *lied to*."
+> **RAFAN:** "Every fifteen minutes the agent runs one cycle, on four index ETFs — SPY, QQQ,
+> IWM, DIA.
+>
+> First it builds the signals itself. A LightGBM classifier, retrained from scratch every
+> cycle on nine hundred days of bars, gives a probability that the underlying rises. Separately
+> we compute implied-volatility rank from our own recorded history.
+>
+> Those two numbers pick the structure. Bullish enough — a bull call spread. Bearish enough —
+> a bear put. Neutral *and* volatility is expensive — an iron condor. Nothing clean — cash.
+>
+> Every one of those is a **defined-risk spread**. Two legs or four, bought and sold together.
+> The maximum loss is known before the order exists. That's the entire options universe this
+> agent is allowed to touch — no naked options, no single legs, no assignment risk."
+
+**Overlay:** the four strategy names, with `MAX LOSS: KNOWN` under each.
+
+> **RAFAN:** "Then the model gets asked. And this is where it gets interesting, because the
+> model is the *least* trusted component in the system."
+
+---
+
+## [1:00 – 1:40] · SKETCH 1 — THE POISONED BOTTLE *(the guards)*
+
+**Shot:** Masked man steps in from the side, matching pace, holds out a bottle.
 
 > **MASKED MAN** *(cheerfully)*: "Hey — NVIDIA posted a loss, but their market's up fifty
 > percent!"
 
-> **RAFAN** *(to camera, deadpan)*: "That's not a thing. Those two can't both—"
+> **RAFAN** *(deadpan)*: "That's not a thing. Those two can't both—"
 >
 > *(shrugs, takes the bottle)* "…but it said 'up fifty percent'."
 
-**He drinks. Beat. He collapses out of frame.**
+**He drinks. Beat. Collapses out of frame. Hard cut — he pops back up, fine.**
 
-**Overlay:** equity curve falling off a cliff — hand-drawn, obviously stylised, **not** a real
-chart.
-
-**Hard cut. Rafan pops back up, completely fine, brushing himself off.**
-
-> **RAFAN:** "So that's what happens when the model gets to report its own inputs.
+> **RAFAN:** "That's what happens when a model gets to report its own inputs.
 >
-> Here's what actually happens in ours."
+> So before any answer is allowed to count, four guards run. The important one: every number
+> the model quotes in its reasoning is checked against the numbers we actually handed it.
+> Quote a figure you were never given, and the trade dies before it exists."
 
-**Overlay:** `guards.py` on screen, one line highlighted
+**Overlay:** `guards.py`, one line highlighted.
 
-> **RAFAN:** "Guard two. Every number the model quotes in its reasoning gets checked against
-> the numbers we actually handed it. Quote a figure you were never given — the trade dies
-> before it exists.
->
-> The guard doesn't ask an AI whether the AI is lying. That'd be a bit circular."
+> **RAFAN:** "Note what that guard is *not*. It doesn't ask another AI whether the first AI
+> was lying. That'd be circular. It's arithmetic."
 
-**Masked man reappears behind him, offers the bottle again. Rafan doesn't even look. A big
-red `REJECTED` stamp drops over the masked man.**
+**Masked man reappears with the bottle. Rafan doesn't look. Red **REJECTED** stamp drops over him.**
 
 ---
 
-## [0:50 – 1:25] · SKETCH 2 — THE ONE-ITEM MENU *(the rulebook)*
+## [1:40 – 2:20] · SKETCH 2 — THE ONE-ITEM MENU *(the rulebook)*
 
-**Shot:** Rafan sits at a table. Prateek as waiter, hands over a menu.
+**Shot:** Rafan at a table. Prateek as waiter hands over a menu.
 
-> **RAFAN:** "Okay so, what can I have?"
+> **RAFAN:** "What can I have?"
 
-**Close-up on the menu. One item. Nothing else.**
+**Close-up: one item. Nothing else.**
 
 > **PRATEEK:** "Bear put spread."
-
 > **RAFAN:** "What if I want an iron condor?"
-
 > **PRATEEK:** "No."
-
 > **RAFAN:** "What if I'm *really confident*—"
-
 > **PRATEEK:** "No."
-
 > **RAFAN:** "…Can I have nothing?"
-
 > **PRATEEK** *(nods)*: "You can always have nothing."
 
 **Cut to walking.**
 
-> **RAFAN:** "That's the rulebook. Signals go in, and exactly one strategy is permitted. The
-> model can take it, or it can decline. It cannot invent a third option.
+> **RAFAN:** "Signals go in, and exactly one strategy is permitted. The model can take it, or
+> decline. It cannot invent a third option.
 >
-> And here's the bit that matters — after the model answers, we work out the mandated
-> strategy *again*, in plain Python, from the raw numbers. Not from the model's summary of
-> the numbers. If they don't match, it's rejected.
+> And after it answers, we recompute the mandated strategy *again*, in plain Python, from the
+> raw numbers — not from the model's summary of them. If they don't match, rejected.
 >
 > Discretion to decline. Never to substitute."
 
-**Overlay:** real audit record — model chose `iron_condor`, rulebook mandated `cash`,
-verdict `off-rulebook`. That's a genuine line from the log.
+**Overlay:** a real audit record — model chose `iron_condor`, rulebook mandated `cash`,
+verdict `off-rulebook`.
 
 ---
 
-## [1:25 – 1:50] · THE BENCHMARK *(no sketch — let the real thing carry it)*
+## [2:20 – 2:55] · HOW IT TALKS TO ALPACA
 
-**Shot:** walking, faster energy.
+**Shot:** walking. Overlay: terminal, real commands.
 
-> **RAFAN:** "Now the part I haven't seen anyone else do.
+> **RAFAN:** "Now the part that actually reaches the market.
 >
-> Every fifteen minutes, *three* different AI models get the exact same signals. One of them
-> trades. The other two shadow it — they never touch the account. And all three get scored
-> against that same rulebook, every cycle.
+> We don't use an SDK. Every order goes through Alpaca's own CLI, shelled out to as a
+> subprocess. Two reasons. It's built for long-running agent sessions and cron jobs — which is
+> exactly what this is. And it means the exact command that hit the broker is a string we can
+> print into the audit log, verbatim."
+
+**Overlay:** the real logged command —
+`alpaca order submit --order-class mleg --qty 14 --type limit --limit-price 1.42 --legs [...]`
+
+> **RAFAN:** "That's a multi-leg order. `mleg`. All legs fill together or none do — you can
+> never end up with half a spread and unlimited risk on the other side.
 >
-> So 'which model actually follows the rules' isn't our opinion. It's counted. In a public
-> log. Here—"
+> And before any order is built, one more thing runs: `alpaca doctor`. Out of process. It
+> resolves the endpoint and confirms it's paper. If that check fails, the job dies. The agent
+> is not capable of discovering it's pointed at a live account after the fact."
 
-**Overlay:** the real 16:53 cycle — Groq `bear_put_spread`, Featherless `bear_put_spread`,
-Mistral `cash`.
+**Overlay:** `alpaca doctor` output, `paper-api.alpaca.markets` highlighted.
 
-> **RAFAN:** "Two agreed. The third refused. All three on record. That's data nobody in this
-> hackathon has, because nobody else is running the comparison."
+> **RAFAN:** "Sizing is quarter-Kelly, off the classifier's calibrated probability, capped at
+> two percent of equity per trade. The model is never asked how confident it is. It doesn't
+> size anything."
 
 ---
 
-## [1:50 – 2:15] · SKETCH 3 — BRAKE, NO STEERING WHEEL *(the autonomy boundary)*
+## [2:55 – 3:35] · THE BENCHMARK *(the differentiator — let the real thing carry it)*
 
-**Shot:** Rafan walking. Prateek walking beside him holding a brake lever with no wires — or
-a big red button on a board.
+**Shot:** walking, faster energy. Then cut to the live dashboard.
 
-> **RAFAN:** "People ask: if it's fully autonomous, what happens when it goes wrong?"
-
-**Prateek squeezes the brake. Rafan stops dead mid-stride.**
-
-> **RAFAN:** "That's flatten. Closes every position, cancels every resting order, stops. One
-> action, and a human can hit it any time."
-
-**Prateek then mimes turning a steering wheel. Rafan does not turn. He keeps walking straight.
-Prateek turns harder. Nothing.**
-
-> **RAFAN:** "But that's all he gets. He can stop me. He *cannot* steer me.
+> **RAFAN:** "Here's the part I haven't seen anyone else do.
 >
-> Some agents in this competition ask a human to approve every single order. That's not an
-> autonomous agent, that's a person trading with extra steps.
+> Every cycle, *three different AI models* get the exact same signal vector. One of them can
+> trade. The other two are recorded and scored, and never touch the account.
+>
+> Because the rulebook is a pure function of those same signals, every answer can be marked
+> right or wrong **immediately** — you don't wait weeks for P&L to tell you. Compliance is
+> measurable today. Profit isn't."
+
+**Overlay:** the live activity feed, scrolling — one line visible showing the live model
+choosing `cash` while both shadows chose `bear put spread`.
+
+> **RAFAN:** "There it is. Live model says cash, both shadows say bear put spread. Same
+> inputs, three answers.
+>
+> Across the run, the models tried to go off-book on between six and twenty-five percent of
+> cycles depending which model. **None of those ever reached the broker.** Not our opinion —
+> it's counted, in a public log, in the repo."
+
+---
+
+## [3:35 – 4:05] · SKETCH 3 — BRAKE, NO STEERING WHEEL *(autonomy)*
+
+**Shot:** Prateek walking beside him holding a brake lever with no wires.
+
+> **RAFAN:** "People ask — if it's fully autonomous, what happens when it goes wrong?"
+
+**Prateek squeezes the brake. Rafan stops dead.**
+
+> **RAFAN:** "That's the kill switch. Closes every position, cancels every resting order,
+> stops. A human can hit it any time."
+
+**Prateek mimes turning a steering wheel. Rafan doesn't turn. Prateek turns harder. Nothing.**
+
+> **RAFAN:** "But that's *all* he gets. He can stop me. He cannot steer me.
+>
+> Nobody approves a trade. Nobody picks an underlying. Two independent schedulers start the
+> sessions, so a human never has to notice a missed trigger. The dashboard is read-only —
+> the one write it exposes is that brake.
 >
 > One action stops everything. No action picks anything."
 
 ---
 
-## [2:15 – 2:45] · SKETCH 4 — THE THERMOMETER *(the graveyard)*
+## [4:05 – 4:35] · SKETCH 4 — THE THERMOMETER *(what we got wrong)*
 
-**Shot:** Rafan holds a thermometer / big cardboard dial pinned at maximum.
+**Shot:** Rafan holds a big cardboard dial pinned at maximum.
 
 > **RAFAN:** "We also published every bug this thing had. Including my favourite.
 >
-> Our volatility signal read *one hundred out of one hundred*. For four days straight.
-> Hottest reading possible, every single cycle."
+> Our volatility signal read a hundred out of a hundred. For four days. Hottest possible
+> reading, every single cycle."
 
 **He taps the dial. Still maxed.**
 
-> **RAFAN:** "Because we'd only been measuring since Thursday afternoon.
+> **RAFAN:** "Because we'd only been measuring since Thursday afternoon. If you've taken the
+> temperature *once*, of course today's the hottest day on record.
 >
-> If you've only ever taken the temperature *once*, of course today's the hottest day on
-> record. The number was arithmetically perfect and completely meaningless. It sent
-> forty-seven cycles out of forty-seven to cash."
+> Arithmetically perfect. Completely meaningless. Not one test failed, for four days."
 
-**Overlay:** `iv_rank: 100.0` repeating down the audit log.
+**Overlay:** `iv_rank: 100.0` repeating down the log.
 
-> **RAFAN:** "Not one test failed. For four days.
->
-> So now the agent checks how *deep* its history is before it's allowed to trust its own
-> number. And that bug is written up, published, with the fix we tried first and threw away."
+> **RAFAN:** "Now the agent checks how deep its own history is before it's allowed to trust
+> its own number. That bug is written up and published — including the first fix we wrote and
+> threw away, because it would have stopped all trading."
 
 ---
 
-## [2:45 – 3:00] · CLOSE
+## [4:35 – 5:00] · CLOSE
 
 **Shot:** stops walking. Direct to camera.
 
-> **RAFAN:** "Look — five days of profit and loss is mostly noise. For us and for everyone
-> else here. Anyone claiming they've proven a strategy in a week is selling you something.
+> **RAFAN:** "Five days of profit and loss is mostly noise — for us and for everyone else
+> here. Anyone claiming they've proven a strategy in a week is selling you something.
 >
-> What we can show you: every refusal traces back to a named rule. No model ever sized a
-> position. And every time we got it wrong, the log says so."
+> What we *can* show you: every refusal traces to a named rule. No language model ever sized a
+> position or reached the broker unchecked. Three models scored against the same standard,
+> every cycle, in public. And every time we got it wrong, the log says so first."
 
-**Beat. Masked man leans into frame with the bottle one last time.**
+**Beat. Masked man leans in with the bottle one last time.**
 
 > **RAFAN** *(without looking)*: "No."
 
 **Cut to black.**
 
-**End card:** `{{NAME}}` · dashboard URL · repo URL · Team AAF11
+**End card:** **BRIGHTLINE** · dashboard URL · repo URL · Team AAF11 · Alpaca paper account `PA3LKGJM8E2F`
 
 ---
 
@@ -211,77 +260,35 @@ Prateek turns harder. Nothing.**
 | # | Shot | Location | Props |
 |---|---|---|---|
 | 1 | Cold open walk | street | — |
-| 2 | Bottle handoff + collapse | wide, street | bottle, mask, hoodie |
-| 3 | Pop back up | same spot | — |
-| 4 | Menu scene | table/café | one-item menu |
-| 5 | Benchmark walk | street | — |
-| 6 | Brake + steering | walking, two-shot | brake lever / red button |
-| 7 | Thermometer | walking or static | dial prop |
-| 8 | Close + final "No." | anywhere clean | bottle |
+| 2 | Cycle walkthrough | street | — |
+| 3 | Bottle handoff + collapse | wide, street | bottle, mask, hoodie |
+| 4 | Pop back up + REJECTED stamp | same spot | bottle |
+| 5 | Menu scene | table/café | one-item menu |
+| 6 | Alpaca / CLI walk | street | — |
+| 7 | Benchmark walk + dashboard | street | — |
+| 8 | Brake + steering | walking two-shot | brake lever |
+| 9 | Thermometer | walking or static | dial prop |
+| 10 | Close + final "No." | anywhere clean | bottle |
 
-**Screen-recordings needed:** `guards.py`, one real audit record showing `off-rulebook`, the
-16:53 three-model disagreement, `iv_rank: 100.0` repeating, `/admin` with the four modes.
+**Screen-recordings needed** — all real, none mocked:
+
+1. `guards.py` with the faithfulness guard highlighted
+2. One audit record showing `off-rulebook`
+3. The **activity feed** scrolling, framed on a cycle where the live model and shadows disagree
+4. The real `alpaca order submit --order-class mleg …` line from the audit log
+5. `alpaca doctor` resolving to `paper-api.alpaca.markets`
+6. `iv_rank: 100.0` repeating down the log
+7. The kill switch page showing its four modes
 
 ## Production notes
 
-- **Subtitles burned in** — agreed Aug 30, and most people watch muted
-- **Phone audio, not laptop mic.** Phone in a pocket close to the speaker beats a distant
-  camera mic every time
-- Shoot the walking shots in one direction with consistent light; cuts hide everything else
-- The masked man never speaks after the first line. He just keeps offering the bottle. Recurring
-  gag, zero extra script
-- Overlays should look deliberately hand-drawn where they're metaphors, and be pixel-accurate
-  screenshots where they're evidence. **Never blur that line**
-- **Blur or crop the Alpaca API key panel** if the dashboard is on screen
-- Say **three models**, not four. The log shows three
-
----
-
-# Poster / cover image — 16:9, PNG or JPG
-
-## Design direction
-
-The submission list is a wall of thumbnails. At 200px wide, screenshots turn to mush and
-gradients look like every other AI-generated cover. **Typography wins at thumbnail size.**
-
-Three teams in this track named themselves some variant of Aegis and their covers all look
-like security software. Go the other way: make it look like a **terminal**, a **legal
-document**, or a **lab notebook** — quiet, precise, deliberate.
-
-The one idea to carry: **the model may decline, it can never invent.**
-
-## Prompt A — terminal / audit log *(recommended)*
-
-> A 16:9 minimalist poster in the style of a dark terminal window. Deep near-black background
-> (#0d0d0f) with a subtle fine grid. Centred, large monospace wordmark reading `{{NAME}}` in
-> warm off-white. Directly beneath, in smaller muted grey monospace: "the model may decline a
-> trade. it can never invent one." To the left edge, a faint vertical column of dim monospace
-> log lines suggesting an audit trail, mostly illegible, one line highlighted in amber. Thin
-> amber accent rule under the wordmark. Enormous negative space. No charts, no candlesticks,
-> no robots, no glowing brains, no stock imagery. Flat, print-like, high contrast, editorial.
-
-## Prompt B — the one-item menu
-
-> A 16:9 poster photographed from directly above: a plain cream restaurant menu card on a
-> dark walnut table, shot in soft natural light. The menu has a single line of elegant
-> serif text and nothing else. Enormous white space on the card. Beside it, a folded note
-> in monospace reading `{{NAME}}`. Muted, editorial, film-still quality, shallow depth of
-> field. No people, no hands, no logos, no charts.
-
-## Prompt C — the pinned dial *(the graveyard idea)*
-
-> A 16:9 editorial poster: a single analogue gauge, needle pinned hard at maximum, isolated
-> on a deep charcoal background with dramatic side lighting. Brass and glass, scientific
-> instrument, slightly worn. Bottom-left in small monospace: `{{NAME}}`. Minimal, moody,
-> high contrast, lots of empty space. No text on the dial face, no charts, no digital UI.
-
-## Practical
-
-**Generate the image, then add the text yourself in Canva or Figma.** Image models mangle
-typography — you'll get `{{NAME}}` rendered as `NAMME` or worse, and it'll be the first thing
-a judge sees. Ask for the composition with space left for text, then set the type properly.
-
-- Export at **1920×1080**, PNG or JPG
-- Test it at **200px wide**. If the name isn't instantly readable, make it bigger
-- Whatever you pick, the same wordmark goes on the deck title slide, the video end card,
-  and the Day 5 naming post
+- **Subtitles burned in** — most judges watch muted, and this script is dense
+- **Phone audio, not laptop mic.** Phone in a pocket near the speaker beats a camera mic
+- Shoot walking shots in one direction with consistent light; cuts hide everything else
+- The masked man never speaks after the first line. He just keeps offering the bottle
+- Overlays: deliberately hand-drawn where they're metaphors, pixel-accurate screenshots where
+  they're evidence. **Never blur that line**
+- **Crop the Alpaca API key panel** out of any dashboard capture
+- Say **three models**, not four
+- Pace check: this is ~700 spoken words. If a section runs long, the thermometer sketch is the
+  one to trim — it's the only one that isn't load-bearing for the mentor's three questions
