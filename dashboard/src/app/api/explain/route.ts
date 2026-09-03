@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getAuditRecords } from "@/lib/audit";
 import { buildSummary, daysRunning, INCEPTION_EQUITY } from "@/lib/summary";
+import { verifyBriefing } from "@/lib/verify-briefing";
 
 // A briefing written by the live model, on demand.
 //
@@ -50,7 +51,7 @@ words. Address the reader directly. Be plain, not promotional.`;
 
 // One briefing per state of the log. Repeated clicks on an unchanged page cost nothing, and
 // a public endpoint that bills per press is a bad idea on a URL anyone can open.
-let cache: { key: string; text: string; at: number } | null = null;
+let cache: { key: string; text: string; at: number; checked: number } | null = null;
 
 export async function GET() {
   const key = process.env.GROQ_API_KEY;
@@ -99,16 +100,26 @@ export async function GET() {
 
   const cacheKey = JSON.stringify(facts);
   if (cache && cache.key === cacheKey) {
-    return NextResponse.json({ text: cache.text, model: MODEL, cached: true, at: cache.at });
+    return NextResponse.json({
+      text: cache.text,
+      model: MODEL,
+      cached: true,
+      at: cache.at,
+      figuresChecked: cache.checked,
+    });
   }
 
+  // Two attempts, then closed. The second is told exactly which figures failed, because a
+  // model that invented one number will usually not invent the same one twice when shown it.
+  let lastFailure: string[] = [];
+  for (let attempt = 0; attempt < 2; attempt += 1) {
   try {
     const res = await fetch(GROQ_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
       body: JSON.stringify({
         model: MODEL,
-        temperature: 0.3,
+        temperature: attempt === 0 ? 0.3 : 0,
         // This model emits a separate `reasoning` field before any content, and both are
         // drawn from the same budget. At 500 the budget was spent thinking and the reply
         // came back with an empty content string and finish_reason "length" — which the UI
@@ -118,6 +129,18 @@ export async function GET() {
         messages: [
           { role: "system", content: SYSTEM },
           { role: "user", content: JSON.stringify(facts, null, 1) },
+          ...(lastFailure.length
+            ? [
+                {
+                  role: "user" as const,
+                  content:
+                    `Your previous reply was rejected by an automatic check. These figures ` +
+                    `appear in it but not in the data you were given: ` +
+                    `${lastFailure.join(", ")}. Write it again using only figures present ` +
+                    `in the data above. Do not compute anything.`,
+                },
+              ]
+            : []),
         ],
       }),
       signal: AbortSignal.timeout(25_000),
@@ -144,9 +167,37 @@ export async function GET() {
       return NextResponse.json({ error: why }, { status: 502 });
     }
 
-    cache = { key: cacheKey, text, at: Date.now() };
-    return NextResponse.json({ text, model: MODEL, cached: false, at: cache.at });
+    // The gate for prose. Same shape as the risk gate on the trading side: the model
+    // proposes, something deterministic decides whether it is allowed through.
+    const check = verifyBriefing(text, facts);
+    if (!check.ok) {
+      lastFailure = check.unverified;
+      continue;
+    }
+
+    cache = { key: cacheKey, text, at: Date.now(), checked: check.checked };
+    return NextResponse.json({
+      text,
+      model: MODEL,
+      cached: false,
+      at: cache.at,
+      figuresChecked: check.checked,
+    });
   } catch {
     return NextResponse.json({ error: "The model did not answer in time." }, { status: 504 });
   }
+  }
+
+  // Fails closed. An unverifiable briefing is not shown at all — a page that promises every
+  // number is traceable cannot make an exception for the paragraph a model wrote.
+  return NextResponse.json(
+    {
+      error:
+        `The model's reply was rejected: it stated ${lastFailure.length === 1 ? "a figure" : "figures"} ` +
+        `not present in the record (${lastFailure.join(", ")}). Nothing is shown rather than ` +
+        `something unverified.`,
+      rejected: lastFailure,
+    },
+    { status: 422 }
+  );
 }

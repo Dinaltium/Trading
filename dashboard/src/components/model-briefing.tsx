@@ -10,7 +10,7 @@ import { useRef, useState } from "react";
 type State =
   | { kind: "idle" }
   | { kind: "loading" }
-  | { kind: "ready"; text: string; model: string }
+  | { kind: "ready"; text: string; model: string; figuresChecked: number }
   | { kind: "error"; message: string };
 
 export function ModelBriefing() {
@@ -34,7 +34,12 @@ export function ModelBriefing() {
         setState({ kind: "error", message: data?.error ?? "Something went wrong." });
         return;
       }
-      setState({ kind: "ready", text: data.text, model: data.model });
+      setState({
+        kind: "ready",
+        text: data.text,
+        model: data.model,
+        figuresChecked: data.figuresChecked ?? 0,
+      });
     } catch {
       setState({ kind: "error", message: "Could not reach the briefing endpoint." });
     }
@@ -98,8 +103,16 @@ export function ModelBriefing() {
                 ))}
             </div>
             <p className="mt-4 border-t border-[var(--brand-olive)]/25 pt-3 font-mono text-[10px] uppercase leading-relaxed tracking-[0.12em] text-muted-foreground">
-              written by {state.model} · it was handed the computed figures only, never the
-              raw log, and cannot do arithmetic of its own
+              written by {state.model} · handed the computed figures only, never the raw log
+              {state.figuresChecked > 0 && (
+                <>
+                  {" · "}
+                  <span className="text-[#0ca30c]">
+                    all {state.figuresChecked} figures in this reply were checked against the
+                    record before it was shown
+                  </span>
+                </>
+              )}
             </p>
           </>
         )}
