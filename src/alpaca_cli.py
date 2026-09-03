@@ -24,6 +24,7 @@ See the alpaca-trading-paper-trading-cli skill, rule 8.
 
 import json
 import subprocess
+from datetime import datetime, timezone
 import uuid
 from dataclasses import dataclass
 from typing import Optional
@@ -281,6 +282,67 @@ def cancel_open_orders() -> dict:
         "cancelled": len(cancelled),
         "failed": failures or None,
     }
+
+
+def stale_open_orders(max_age_minutes: float) -> tuple[list, Optional[str]]:
+    """Resting orders older than max_age_minutes, with enough detail to re-price them.
+
+    A multi-leg limit is priced once, at the mid the moment it is built, and then never
+    again. On 2026-09-02 a DIA bear put spread went in at mid+0.02 = 1.42, DIA fell, the
+    spread's mid moved to ~1.70, and the order sat 5h15m and died unfilled at the bell on its
+    DAY time-in-force. The agent had read the direction correctly and been approved by the
+    gate; it lost the entry to arithmetic that was true forty minutes earlier. Worse, the
+    resting order counted as a claimed underlying the whole time, so DIA was blocked from
+    being proposed again.
+
+    Returns (orders, error). Each order carries id, submitted_at, limit_price, qty and legs.
+    """
+    listed = _run(["order", "list", "--status", "open"])
+    if not listed.ok:
+        return [], listed.error or listed.stderr
+
+    parsed = _safe_json(listed.stdout)
+    rows = parsed if isinstance(parsed, list) else (parsed or {}).get("orders") or []
+    if not isinstance(rows, list):
+        return [], f"unexpected order payload: {str(parsed)[:200]}"
+
+    now = datetime.now(timezone.utc)
+    stale = []
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        raw = row.get("submitted_at") or row.get("created_at")
+        if not raw:
+            continue
+        try:
+            submitted = datetime.fromisoformat(str(raw).replace("Z", "+00:00"))
+        except ValueError:
+            continue
+        age = (now - submitted).total_seconds() / 60.0
+        if age < max_age_minutes:
+            continue
+        stale.append(
+            {
+                "id": str(row.get("id")),
+                "age_minutes": round(age, 1),
+                "limit_price": row.get("limit_price"),
+                "qty": row.get("qty"),
+                "legs": [
+                    {"symbol": leg.get("symbol"), "side": leg.get("side"),
+                     "ratio_qty": leg.get("ratio_qty")}
+                    for leg in (row.get("legs") or [])
+                    if isinstance(leg, dict)
+                ],
+            }
+        )
+    return stale, None
+
+
+def cancel_order(order_id: str) -> dict:
+    """Cancel one order. Separate from cancel_open_orders because re-pricing must never
+    cancel anything but the order it is replacing."""
+    result = _run(["order", "cancel", "--order-id", order_id])
+    return {"ok": result.ok, "order_id": order_id, "error": None if result.ok else result.error}
 
 
 def open_order_underlyings() -> tuple[set, Optional[str]]:

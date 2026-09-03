@@ -7,10 +7,19 @@ daily_drawdown_halt_pct: 0.05      # stop trading for the day past this loss
 one_position_per_underlying: true  # no re-entry into a name already held. See risk_gate.py:
                                    # the first live session stacked three identical SPY
                                    # spreads because re-entry was exempt from the cap below.
-max_underlyings_concurrent: 3      # diversify across 2-3 names, not all-in. Deliberately
-                                   # NOT raised alongside the wider universe below: more
-                                   # candidates to choose from is a different thing from more
-                                   # concurrent risk, and only the first is wanted here.
+max_underlyings_concurrent: 4      # One per name in the universe, no more. Raised from 3 on
+                                   # 2026-09-03 on evidence, not appetite: on Sep 2 the gate
+                                   # refused 14 cycles for "max_underlyings_concurrent (3)
+                                   # reached" while total open risk sat at 5.2% of a 10%
+                                   # budget. The cap was binding before the risk budget was,
+                                   # which meant the agent was idle on a name it had already
+                                   # been cleared to trade.
+                                   #
+                                   # This does not loosen any risk rule. Four names at the
+                                   # 2% per-trade cap is 8%, still inside the 10% ceiling,
+                                   # and one_position_per_underlying still forbids stacking.
+                                   # It is the diversification rule doing what it says:
+                                   # four names, not three positions in a four-name universe.
 
 allowed_strategies:
   - bull_call_spread
@@ -74,7 +83,13 @@ adaptive_restriction:
   # a position must not stop it closing one.
   max_consecutive_losses: 3
 
+
 exits:
+  # How long a resting limit order may sit before it is cancelled and the whole decision
+  # re-made from current signals. 20 minutes is a little over one cycle: long enough that a
+  # genuine fill has had its chance, short enough that a spread whose mid has moved 20c is
+  # not still occupying its underlying. See positions.reprice_stale_orders.
+  stale_order_minutes: 20
   # Deterministic stop-loss on open spreads, evaluated from broker-reported P&L and the
   # strikes parsed off the OCC symbols. No model is consulted: an LLM has no role in
   # deciding when to cut a loss, for the same reason it has none in sizing one.

@@ -107,11 +107,23 @@ def test_third_concurrent_underlying_allowed(limits):
     assert evaluate(condor("AAPL"), account, limits).approved
 
 
-def test_fourth_concurrent_underlying_rejected(limits):
-    account = flat_account(open_underlyings={"SPY", "QQQ", "AAPL"})
+def test_a_name_beyond_the_concurrency_cap_is_rejected(limits):
+    """The cap is 4 as of 2026-09-03, one per name in the universe. It was 3, and this test
+    asserted a fourth name was refused; the cap was raised on evidence — on Sep 2 the gate
+    refused 14 cycles for "max_underlyings_concurrent (3) reached" while total open risk sat
+    at 5.2% of a 10% budget, so the count was binding before the risk budget was. The rule
+    itself is unchanged and still bites, one name later."""
+    account = flat_account(open_underlyings={"SPY", "QQQ", "IWM", "DIA"})
     result = evaluate(condor("MSFT"), account, limits)
     assert not result.approved
     assert "max_underlyings_concurrent" in result.reason
+
+
+def test_fourth_concurrent_underlying_now_allowed(limits):
+    """The specific behaviour the raise was for: a fourth distinct name, inside the cap and
+    inside the open-risk budget, is no longer refused for being fourth."""
+    account = flat_account(open_underlyings={"SPY", "QQQ", "IWM"})
+    assert evaluate(condor("DIA"), account, limits).approved
 
 
 def test_re_entry_into_a_held_name_is_refused(limits):

@@ -17,7 +17,7 @@ from src.agent_state import AgentState
 from src.audit_log import push_audit_log, write_exit_record
 from src.live_settings import fetch_live_settings
 from src.orchestrator import run_cycle
-from src.positions import flatten_all_positions, manage_open_positions
+from src.positions import flatten_all_positions, manage_open_positions, reprice_stale_orders
 
 INTERVAL_MINUTES = 15
 CYCLE_TIMEOUT_SECONDS = 90  # alpaca-py sets no request timeout anywhere in its REST layer
@@ -69,6 +69,22 @@ def run_all_cycles(dry_run: bool = True, test_mode: bool = False):
     # Exits run BEFORE entries and in every non-paused mode. Managing existing risk is not
     # something a kill switch should be able to turn off while positions are still open.
     if settings.may_close_positions:
+        # Before anything else: clear resting orders the market has walked away from. They
+        # cannot fill at a price that stopped being current hours ago, and while they rest
+        # they hold an underlying hostage — the one-position-per-underlying rule counts a
+        # working order as claimed exposure, so a dead order blocks the name it is on from
+        # ever being proposed again. Runs under may_close_positions rather than
+        # may_open_new_positions on purpose: cancelling is a reduction in exposure, and a
+        # kill switch set to exit_only should still be allowed to do it.
+        reprice = reprice_stale_orders(dry_run=dry_run)
+        if reprice.get("cancelled"):
+            for order in reprice.get("orders") or []:
+                print(f"  -> cancelled stale order on {order['underlying']} "
+                      f"({order['age_minutes']} min at limit {order['limit']}); "
+                      f"the next cycle re-prices it from current signals")
+        elif not reprice.get("ok"):
+            print(f"  -> stale-order pass failed: {reprice.get('error')}")
+
         exits = manage_open_positions(dry_run=dry_run)
         write_exit_record(exits, dry_run=dry_run)  # closes belong in the audit log, not just stdout
 

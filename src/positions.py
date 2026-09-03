@@ -18,7 +18,16 @@ from typing import Optional
 
 import yaml
 
-from src.alpaca_cli import _redacted_command, _run, _safe_json, cancel_open_orders, verify_paper_endpoint
+from src.alpaca_cli import (
+    _redacted_command,
+    _run,
+    _safe_json,
+    cancel_open_orders,
+    cancel_order,
+    stale_open_orders,
+    underlying_root,
+    verify_paper_endpoint,
+)
 
 CONFIG_PATH = Path(__file__).resolve().parent.parent / "config" / "risk_limits.yaml"
 OPTION_MULTIPLIER = 100  # one contract controls 100 shares
@@ -416,3 +425,62 @@ if __name__ == "__main__":
               f"loss_fraction={s.loss_fraction}")
     print()
     print(json.dumps(manage_open_positions(dry_run=True), indent=2, default=str))
+
+
+def reprice_stale_orders(dry_run: bool = True) -> dict:
+    """Cancel resting limit orders that the market has moved away from.
+
+    A multi-leg limit is priced once, at the mid at the moment it is built, and then never
+    revisited. On 2026-09-02 a DIA bear put spread went in at mid+0.02 = 1.42, DIA fell, the
+    spread's own mid moved to ~1.70, and the order rested 5h15m before dying unfilled at the
+    bell on its DAY time-in-force. The direction was right and the gate had approved it; the
+    entry was lost to arithmetic that stopped being true forty minutes in. The resting order
+    also counted as a claimed underlying for those five hours, so DIA could not be proposed
+    again while its own stale order blocked it.
+
+    This cancels rather than re-submits. Cancelling frees the underlying, and the next cycle
+    re-runs the whole pipeline - fresh signals, a fresh model decision, a fresh risk-gate
+    verdict and fresh sizing - and prices the new order at the mid that is true then. That is
+    strictly safer than patching a price onto a decision made hours ago against signals that
+    have since changed: a cancel-and-replace at a new limit would carry the old cycle's
+    conviction to a market that no longer resembles it.
+
+    Nothing here decides what to trade. It only stops a dead order from occupying a slot.
+    """
+    config = _load_exit_config()
+    max_age = float(config.get("stale_order_minutes", 20))
+
+    stale, error = stale_open_orders(max_age)
+    if error:
+        return {"ok": False, "error": error, "cancelled": 0}
+    if not stale:
+        return {"ok": True, "cancelled": 0, "checked": 0}
+
+    if dry_run:
+        return {
+            "ok": True,
+            "dry_run": True,
+            "cancelled": 0,
+            "would_cancel": [
+                {"order_id": o["id"], "age_minutes": o["age_minutes"], "limit": o["limit_price"]}
+                for o in stale
+            ],
+        }
+
+    cancelled, failed = [], []
+    for order in stale:
+        result = cancel_order(order["id"])
+        entry = {
+            "order_id": order["id"],
+            "age_minutes": order["age_minutes"],
+            "limit": order["limit_price"],
+            "underlying": underlying_root(order["legs"][0]["symbol"]) if order.get("legs") else None,
+        }
+        (cancelled if result["ok"] else failed).append(entry)
+
+    return {
+        "ok": not failed,
+        "cancelled": len(cancelled),
+        "orders": cancelled,
+        "failed": failed or None,
+    }

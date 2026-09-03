@@ -24,7 +24,16 @@ name: Trading cycle
 # workflow_dispatch endpoint at 13:28 UTC (330 min) and 19:00 UTC (65 min), weekdays. Removing
 # the schedule: block here stops late deliveries queueing behind live sessions and filling the
 # run history with cancellations.
+# Two independent triggers, on purpose. GitHub's scheduler is unreliable — it was due four
+# times across Aug 29-Sep 1 and fired once, four hours late — so cron-job.org is the primary
+# and this is the backup. Either one alone starts a full session; the concurrency group below
+# means that if both fire, the second queues rather than double-trading. The point is that no
+# human has to notice a missed trigger: two independent systems have to fail on the same day
+# for a session to be missed, and neither of them is a person.
 on:
+  schedule:
+    - cron: "28 13 * * 1-5"   # backup for the open; cron-job.org fires the same minute
+    - cron: "0 19 * * 1-5"    # backup for the closing hour
   workflow_dispatch:
     inputs:
       mode:
@@ -140,6 +149,20 @@ jobs:
         # out-of-process `alpaca doctor` paper-endpoint check that runs before any order is
         # built. See src/alpaca_cli.py.
         run: |
+          # A scheduled run has no inputs, so it must supply its own. It is always a live
+          # session — a backup trigger that fires and then trades nothing is not a backup.
+          # The budget is sized from which cron fired: the 13:28 one covers the day, the
+          # 19:00 one covers the closing hour and self-exits at the bell.
+          if [ "${{ github.event_name }}" = "schedule" ]; then
+            case "${{ github.event.schedule }}" in
+              "28 13 * * 1-5") BUDGET=330 ;;
+              *)               BUDGET=65  ;;
+            esac
+            echo "scheduled trigger (${{ github.event.schedule }}) -> live session, $BUDGET min"
+            python -m src.scheduler --session --max-minutes "$BUDGET" --live
+            exit $?
+          fi
+
           LIVE=""
           if [ "${{ inputs.live }}" = "true" ]; then LIVE="--live"; fi
           if [ "${{ inputs.mode }}" = "session" ]; then
