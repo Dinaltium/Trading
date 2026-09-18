@@ -3,11 +3,10 @@
   "breaker_tripped": false,
   "breaker_failures_at_trip": 0,
   "last_execution_error": null,
-  "last_cycle_at": "2026-09-18T13:46:07.721339+00:00",
+  "last_cycle_at": "2026-09-18T14:01:11.909072+00:00",
   "last_submission_at": "2026-09-17T14:16:13.180802+00:00",
-  "cycles_recorded": 993,
+  "cycles_recorded": 997,
   "consecutive_losses_by_underlying": {
-    "IWM": 1,
     "SPY": 1
   }
 }
